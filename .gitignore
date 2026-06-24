@@ -1,0 +1,35 @@
+# Bridge infrastructure (contains secrets and runtime state)
+bridge/
+
+# Dashboard runtime state
+dashboard/dashboard.log
+dashboard/sessions.json
+
+# Dependencies
+node_modules/
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Runtime / logs
+*.log
+*.pid
+
+# Agent ephemeral state
+agents/*/current_task.json
+
+# OS
+.DS_Store

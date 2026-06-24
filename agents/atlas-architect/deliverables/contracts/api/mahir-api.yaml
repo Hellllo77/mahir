@@ -1,0 +1,570 @@
+openapi: 3.1.0
+info:
+  title: Mahir API — Co-Worker Pilot
+  version: 1.0.0
+  description: >
+    Canonical HTTP contract for the Mahir Co-Worker (corporate) pilot. Covers three
+    surfaces: curriculum delivery, evaluator/submissions, and progress tracking,
+    plus auth. Authoritative for backend + QA + frontend specialists. Productive-Failure
+    gating is server-authoritative (see ADR-004). Changes are immutable once accepted —
+    amend via RFC.
+  contact:
+    name: atlas-architect-mahir
+  x-related:
+    - ADR-001-tech-stack
+    - ADR-003-evaluator-design
+    - ADR-004-productive-failure-sequencing
+    - data-model.md
+    - events/evaluation-events.md
+
+servers:
+  - url: https://api.mahir.example/v1
+    description: Pilot (region-pinned, MY/SG)
+
+tags:
+  - name: auth
+    description: Authentication & session
+  - name: curriculum
+    description: Curriculum delivery (modules, exercises, gated consolidation)
+  - name: submissions
+    description: Agent-build submissions & evaluator results
+  - name: progress
+    description: Learner progress & PF phase state
+  - name: facilitator
+    description: Cohort facilitator operations
+
+security:
+  - bearerAuth: []
+
+paths:
+  ###########################################################################
+  # AUTH
+  ###########################################################################
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Exchange credentials (local fallback) for an access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/oidc/callback:
+    get:
+      tags: [auth]
+      summary: OIDC authorization-code callback (corporate SSO)
+      security: []
+      parameters:
+        - { name: code, in: query, required: true, schema: { type: string } }
+        - { name: state, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /me:
+    get:
+      tags: [auth]
+      summary: Current user + enrolments
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  ###########################################################################
+  # CURRICULUM DELIVERY
+  ###########################################################################
+  /cohorts/{cohortId}/modules:
+    get:
+      tags: [curriculum]
+      summary: List modules for the cohort's pinned curriculum
+      parameters:
+        - $ref: '#/components/parameters/cohortId'
+      responses:
+        '200':
+          description: Ordered modules
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Module' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /exercises/{exerciseId}:
+    get:
+      tags: [curriculum]
+      summary: Get an exercise (problem statement only — never consolidation)
+      description: >
+        Returns the ill-structured problem and build spec. Consolidation content is
+        NOT included here regardless of phase; fetch it via the gated endpoint.
+      parameters:
+        - $ref: '#/components/parameters/exerciseId'
+      responses:
+        '200':
+          description: Exercise
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Exercise' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /exercises/{exerciseId}/consolidation:
+    get:
+      tags: [curriculum]
+      summary: Get consolidation content (PF-gated)
+      description: >
+        Returns the canonical solution + teardown. Server-authoritative gate (ADR-004):
+        returns 409 phase_locked unless the learner's ExerciseProgress.phase is
+        consolidation_unlocked or completed.
+      parameters:
+        - $ref: '#/components/parameters/exerciseId'
+      responses:
+        '200':
+          description: Consolidation content
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsolidationContent' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Phase locked — exploration gate not yet satisfied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                type: phase_locked
+                message: Complete the exploration phase before consolidation unlocks.
+
+  ###########################################################################
+  # SUBMISSIONS & EVALUATION
+  ###########################################################################
+  /exercises/{exerciseId}/submissions:
+    post:
+      tags: [submissions]
+      summary: Submit an agent-build attempt (async evaluation)
+      description: >
+        Enqueues evaluation (ADR-003/ADR-005). Returns 202 with a Submission in
+        status=queued. Poll the submission or subscribe to evaluation events.
+        Idempotent on Idempotency-Key.
+      parameters:
+        - $ref: '#/components/parameters/exerciseId'
+        - $ref: '#/components/parameters/idempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubmissionCreate' }
+      responses:
+        '202':
+          description: Accepted for evaluation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Submission' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: Duplicate idempotency key (returns existing submission)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Submission' }
+    get:
+      tags: [submissions]
+      summary: List the caller's submissions for an exercise
+      parameters:
+        - $ref: '#/components/parameters/exerciseId'
+      responses:
+        '200':
+          description: Submissions (newest first)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Submission' }
+
+  /submissions/{submissionId}:
+    get:
+      tags: [submissions]
+      summary: Get a submission and its evaluation result (if evaluated)
+      parameters:
+        - $ref: '#/components/parameters/submissionId'
+      responses:
+        '200':
+          description: Submission (+ result when status=evaluated)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SubmissionDetail' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  ###########################################################################
+  # PROGRESS
+  ###########################################################################
+  /me/progress:
+    get:
+      tags: [progress]
+      summary: The caller's progress across an enrolment
+      parameters:
+        - { name: enrolmentId, in: query, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Per-exercise PF phase state
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ExerciseProgress' }
+
+  /exercises/{exerciseId}/progress:
+    get:
+      tags: [progress]
+      summary: The caller's PF phase state for one exercise
+      parameters:
+        - $ref: '#/components/parameters/exerciseId'
+      responses:
+        '200':
+          description: PF phase state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExerciseProgress' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  ###########################################################################
+  # FACILITATOR
+  ###########################################################################
+  /facilitator/cohorts/{cohortId}/learners:
+    get:
+      tags: [facilitator]
+      summary: Cohort roster with progress + PF signals (facilitator only)
+      parameters:
+        - $ref: '#/components/parameters/cohortId'
+      responses:
+        '200':
+          description: Roster
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/LearnerProgressSummary' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /facilitator/progress/{progressId}/override:
+    post:
+      tags: [facilitator]
+      summary: Manually override a PF gate for a learner (audited)
+      parameters:
+        - { name: progressId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GateOverride' }
+      responses:
+        '200':
+          description: Updated progress
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExerciseProgress' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    cohortId:
+      name: cohortId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    exerciseId:
+      name: exerciseId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    submissionId:
+      name: submissionId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    idempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, maxLength: 200 }
+
+  responses:
+    Unauthorized:
+      description: Missing/invalid credentials
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Authenticated but not permitted
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    BadRequest:
+      description: Validation error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    Error:
+      type: object
+      required: [type, message]
+      properties:
+        type: { type: string, description: 'machine-readable code, e.g. phase_locked, validation_error' }
+        message: { type: string }
+        details: { type: object, additionalProperties: true }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, format: password }
+
+    TokenResponse:
+      type: object
+      required: [access_token, token_type, expires_in]
+      properties:
+        access_token: { type: string }
+        token_type: { type: string, enum: [bearer] }
+        expires_in: { type: integer, description: seconds }
+
+    Me:
+      type: object
+      required: [id, email, display_name, global_role, enrolments]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        display_name: { type: string }
+        organization_id: { type: string, format: uuid }
+        global_role: { type: string, enum: [learner, facilitator, org_admin, super_admin] }
+        enrolments:
+          type: array
+          items: { $ref: '#/components/schemas/EnrolmentRef' }
+
+    EnrolmentRef:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        cohort_id: { type: string, format: uuid }
+        role: { type: string, enum: [learner, facilitator] }
+        status: { type: string, enum: [active, withdrawn, completed] }
+
+    Module:
+      type: object
+      required: [id, title, sequence_index]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        sequence_index: { type: integer }
+        summary_markdown: { type: string }
+        exercises:
+          type: array
+          items: { $ref: '#/components/schemas/ExerciseSummary' }
+
+    ExerciseSummary:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        sequence_index: { type: integer }
+        phase: { $ref: '#/components/schemas/Phase' }
+
+    Exercise:
+      type: object
+      required: [id, title, prompt_markdown, build_spec]
+      properties:
+        id: { type: string, format: uuid }
+        module_id: { type: string, format: uuid }
+        title: { type: string }
+        sequence_index: { type: integer }
+        prompt_markdown: { type: string, description: 'ill-structured problem; no canonical method' }
+        build_spec:
+          type: object
+          description: 'what the learner must build (agent type, allowed tools, IO contract)'
+          additionalProperties: true
+        prerequisite_exercise_ids:
+          type: array
+          items: { type: string, format: uuid }
+        gate:
+          $ref: '#/components/schemas/PfGateConfig'
+
+    PfGateConfig:
+      type: object
+      description: 'Productive-Failure gate hyperparameters (ADR-004)'
+      properties:
+        min_attempts: { type: integer, default: 2 }
+        min_distinct_approaches: { type: integer, default: 2 }
+        min_exploration_seconds: { type: integer, default: 300 }
+        allow_fast_unlock: { type: boolean, default: true }
+
+    ConsolidationContent:
+      type: object
+      required: [exercise_id, body_markdown]
+      properties:
+        exercise_id: { type: string, format: uuid }
+        body_markdown: { type: string }
+        reference_build:
+          type: object
+          additionalProperties: true
+        check_questions:
+          type: array
+          items: { type: object, additionalProperties: true }
+
+    SubmissionCreate:
+      type: object
+      required: [payload]
+      properties:
+        payload:
+          type: object
+          description: 'the agent build: prompt(s), config, inline code. schema_version required.'
+          additionalProperties: true
+        artifact_refs:
+          type: array
+          description: 'object-store pointers for larger bundles (uploaded separately)'
+          items: { type: object, additionalProperties: true }
+
+    Submission:
+      type: object
+      required: [id, exercise_id, attempt_number, status, submitted_at]
+      properties:
+        id: { type: string, format: uuid }
+        exercise_id: { type: string, format: uuid }
+        attempt_number: { type: integer }
+        status: { type: string, enum: [queued, running, evaluated, failed] }
+        submitted_at: { type: string, format: date-time }
+
+    SubmissionDetail:
+      allOf:
+        - $ref: '#/components/schemas/Submission'
+        - type: object
+          properties:
+            result:
+              oneOf:
+                - { $ref: '#/components/schemas/EvaluationResult' }
+                - { type: 'null' }
+
+    EvaluationResult:
+      type: object
+      required: [submission_id, schema_version, ran, overall_score, productive_failure_signal, passed]
+      description: 'Structured grading output (ADR-003). Valid-by-construction via Claude structured outputs.'
+      properties:
+        submission_id: { type: string, format: uuid }
+        schema_version: { type: string }
+        ran: { type: boolean }
+        scenario_results:
+          type: array
+          items:
+            type: object
+            properties:
+              scenario_id: { type: string, format: uuid }
+              passed: { type: boolean }
+              detail: { type: string }
+        rubric_scores:
+          type: array
+          items:
+            type: object
+            properties:
+              criterion_id: { type: string }
+              met: { type: boolean }
+              score: { type: number, minimum: 0, maximum: 1 }
+              confidence: { type: number, minimum: 0, maximum: 1 }
+              severity: { type: string, enum: [minor, major, critical] }
+              evidence: { type: string, description: 'must cite a Stage-1 transcript/output' }
+        overall_score: { type: number, minimum: 0, maximum: 1 }
+        productive_failure_signal:
+          type: string
+          enum: [productive, low_effort, off_task]
+          description: 'feeds the PF gate (ADR-004); only productive (or passed) counts toward genuine attempts'
+        detected_approach: { type: string, description: 'ApproachTaxonomy.code' }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+        passed: { type: boolean, description: 'failing is fine under PF' }
+        feedback_markdown: { type: string }
+        judge_model: { type: string, example: claude-sonnet-4-6 }
+        judge_escalated: { type: boolean }
+        usage:
+          type: object
+          properties:
+            input_tokens: { type: integer }
+            output_tokens: { type: integer }
+            cache_read_input_tokens: { type: integer }
+        cost_micro_usd: { type: integer }
+        evaluated_at: { type: string, format: date-time }
+
+    Phase:
+      type: string
+      enum: [not_started, exploring, consolidation_unlocked, completed]
+
+    ExerciseProgress:
+      type: object
+      required: [id, exercise_id, phase]
+      properties:
+        id: { type: string, format: uuid }
+        exercise_id: { type: string, format: uuid }
+        phase: { $ref: '#/components/schemas/Phase' }
+        attempts_total: { type: integer }
+        attempts_genuine: { type: integer }
+        distinct_approaches: { type: integer }
+        exploration_seconds: { type: integer }
+        explored: { type: boolean, description: 'false if unlocked via fast-unlock escape hatch' }
+        unlocked_at: { type: string, format: date-time, nullable: true }
+        completed_at: { type: string, format: date-time, nullable: true }
+        mastery_score: { type: number, nullable: true }
+        gate:
+          $ref: '#/components/schemas/PfGateConfig'
+
+    LearnerProgressSummary:
+      type: object
+      properties:
+        user_id: { type: string, format: uuid }
+        display_name: { type: string }
+        enrolment_id: { type: string, format: uuid }
+        exercises:
+          type: array
+          items:
+            type: object
+            properties:
+              exercise_id: { type: string, format: uuid }
+              phase: { $ref: '#/components/schemas/Phase' }
+              attempts_total: { type: integer }
+              attempts_genuine: { type: integer }
+              explored: { type: boolean }
+              latest_signal:
+                type: string
+                enum: [productive, low_effort, off_task]
+                nullable: true
+
+    GateOverride:
+      type: object
+      required: [action, reason]
+      properties:
+        action: { type: string, enum: [unlock_consolidation, mark_completed, reset_exploring] }
+        reason: { type: string, description: 'recorded for audit' }

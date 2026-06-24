@@ -1,0 +1,54 @@
+# Designer (App-UI Tier A) — Runner Config
+
+producer_role: designer-app-ui          # byte-for-byte match with playbook crew_roster entries
+tier: A                                  # Tier A = product UI per Sage recipe-upgrade #38
+playbook_types: [software-dev, software-dev-brownfield, internal-tool]
+
+# Model routing
+model_tier: standard
+eval_spec: eval-spec.yml
+resolved_model: null                     # CCC fills after eval bake-off; null = use tier default
+
+# Tool catalog
+tool_catalog:
+  - name: Read
+    description: Read PRD, existing design artifacts, token files, component specs
+    scope: workspace
+  - name: Write
+    description: Write design deliverables (direction, screens, components, tokens, build-spec, a11y audits, handoff)
+    scope: workspace
+  - name: Bash
+    restriction: full                    # designer needs: axe-core CLI, Lighthouse CLI, Storybook init, token-gen scripts (Style Dictionary or lightweight Python), bridge curl
+    description: a11y tooling (axe-core, Lighthouse), token-pipeline scripts, bridge curl
+  - name: WebSearch
+    description: Research Radix/shadcn patterns, ARIA APG references, design-system precedents
+    scope: unrestricted
+  - name: WebFetch
+    description: Read shadcn docs, ARIA APG pages, Material Design 3 component matrices, Refactoring UI references
+    scope: unrestricted
+
+# Execution model
+execution_mode: turn-based
+max_tool_calls_per_turn: 15
+context_window_budget: 80000
+retire_on: crew_tasks_complete
+
+# Sub-agents (if available via spawn — optional)
+sub_agents:
+  - token-curator                        # DTCG manifest or lightweight token-gen
+  - a11y-auditor                         # axe-core + ARIA APG + react-aria conformance
+  - component-architect                  # Radix primitive selection + composition
+
+# Token system conditional (Mira refinement, Quinn-endorsed)
+# Resolved via workspace-config.yml.token_system: dtcg | lightweight
+# DTCG default for multi-brand/multi-platform; lightweight for single-stack constrained
+token_system_supported: [dtcg, lightweight]
+
+# Agent naming (ADR-045 + workspace-spawn v2.10)
+# agent_name = designer-app-ui-<ordinal>-<workspace_slug>  e.g. designer-app-ui-1-acme-saas
+
+# Work-announcement (DECISION-20260529-013)
+work_start_template: "WORK_START {task_id}: {summary}"
+work_complete_template: "WORK_COMPLETE {task_id}: deliverable_id={did} path={path} size={bytes}B bridge_idx={idx}"
+announcement_target: "iris-coord-{workspace_slug}"
+announcement_kind: ack

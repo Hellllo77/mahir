@@ -1,0 +1,40 @@
+# QA Agent — Runner Config
+
+producer_role: qa
+playbook_types: [software-dev]
+
+# Model routing
+model_tier: standard
+eval_spec: eval-spec.yml
+resolved_model: null
+
+# Tool catalog — standard names (Write/Read/Bash/WebSearch/WebFetch)
+# Note: Playwright MCP is Claude-Code-harness-only. API-loop QA uses Bash-driven playwright CLI instead.
+tool_catalog:
+  - name: Read
+    description: Read acceptance criteria, API contracts, existing test files, source code
+    scope: workspace
+  - name: Write
+    description: Write test files, bug reports, QA verification reports
+    scope: workspace
+  - name: Bash
+    restriction: full
+    description: Test runners (jest, playwright CLI, curl API tests), git, bridge curl
+  - name: WebSearch
+    description: Research testing patterns, error diagnosis
+    scope: unrestricted
+  - name: WebFetch
+    description: Read testing framework documentation
+    scope: unrestricted
+
+# Execution model
+execution_mode: turn-based
+max_tool_calls_per_turn: 20
+context_window_budget: 80000
+retire_on: crew_tasks_complete
+
+# Work-announcement (DECISION-20260529-013)
+work_start_template: "WORK_START {task_id}: {summary}"
+work_complete_template: "WORK_COMPLETE {task_id}: {outcome}"
+announcement_target: "iris-coord-{workspace_slug}"
+announcement_kind: ack

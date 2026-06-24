@@ -1,0 +1,48 @@
+{
+  "version": "1.2",
+  "title": "Mahir — Dev Dashboard",
+  "workspace": "/Volumes/Work Folder/CCC/cc-workspaces/mahir",
+  "agents_dir": "agents",
+  "max_active_agents": 10,
+  "sessions_file": "dashboard/sessions.json",
+  "session_prefix": "mahir-agent-",
+  "agent_name_suffix": "-mahir",
+  "agent_model_defaults": {
+    "iris-coord-mahir": "claude-sonnet-4-6",
+    "atlas-architect-mahir": "claude-sonnet-4-6",
+    "felix-backend-mahir": "claude-sonnet-4-6",
+    "wren-frontend-mahir": "claude-sonnet-4-6",
+    "mira-designer-mahir": "claude-sonnet-4-6",
+    "vera-qa-mahir": "claude-sonnet-4-6"
+  },
+  "bridge": {
+    "host": "127.0.0.1",
+    "port": 9012,
+    "dir": "bridge",
+    "presence_path": "bridge/presence.json",
+    "messages_path": "bridge/messages.json",
+    "names_path": "bridge/shared/agent-names.json",
+    "start_script": "bridge/start.sh",
+    "stop_script": "bridge/stop.sh"
+  },
+  "scripts": {},
+  "dashboard": {
+    "host": "127.0.0.1",
+    "port": 9112
+  },
+  "models": [
+    {
+      "id": "claude-sonnet-4-6",
+      "label": "Sonnet 4.6",
+      "hint": "fast · balanced",
+      "default": true
+    },
+    {
+      "id": "claude-opus-4-8",
+      "label": "Opus 4.8",
+      "hint": "most capable"
+    }
+  ],
+  "output_buffer_cap_bytes": 200000,
+  "auto_arm_default": true
+}

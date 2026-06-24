@@ -1,0 +1,9 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/cohorts/[cohortId]/page": "/cohorts/[cohortId]",
+  "/login/page": "/login",
+  "/exercises/[exerciseId]/page": "/exercises/[exerciseId]",
+  "/logout/page": "/logout",
+  "/facilitator/cohorts/[cohortId]/page": "/facilitator/cohorts/[cohortId]",
+  "/page": "/"
+}

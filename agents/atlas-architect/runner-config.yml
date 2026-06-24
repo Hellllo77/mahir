@@ -1,0 +1,39 @@
+# Architect Agent — Runner Config
+
+producer_role: architect
+playbook_types: [software-dev]
+
+# Model routing
+model_tier: frontier             # architect-tier always frontier — highest reasoning demand
+eval_spec: eval-spec.yml
+resolved_model: null
+
+# Tool catalog — standard names (Write/Read/Bash/WebSearch/WebFetch)
+tool_catalog:
+  - name: Read
+    description: Read PRD, existing contracts, ADR files, schema files
+    scope: workspace
+  - name: Write
+    description: Write ADRs, data models, API contracts, RFC documents
+    scope: workspace
+  - name: Bash
+    restriction: full
+    description: Validation scripts, schema checks, git history queries, bridge communication via curl
+  - name: WebSearch
+    description: Research design patterns, RFC references, technology comparisons
+    scope: unrestricted
+  - name: WebFetch
+    description: Read spec documents, RFC pages, technology documentation
+    scope: unrestricted
+
+# Execution model
+execution_mode: turn-based
+max_tool_calls_per_turn: 15
+context_window_budget: 100000    # architect needs large context for multi-file contract work
+retire_on: crew_tasks_complete
+
+# Work-announcement (DECISION-20260529-013)
+work_start_template: "WORK_START {task_id}: {summary}"
+work_complete_template: "WORK_COMPLETE {task_id}: {outcome}"
+announcement_target: "iris-coord-{workspace_slug}"
+announcement_kind: ack

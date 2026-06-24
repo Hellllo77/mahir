@@ -1,0 +1,9 @@
+# Per-spawn config — written by CCC at provision time (S-provA).
+bridge_endpoint: http://localhost:9012
+workspace_slug: mahir
+agent_name: atlas-architect-mahir
+producer_role: architect
+model_tier: opus-standard
+ordinal: 1
+instrumentation_version: "1.1"
+prd_path: /Volumes/Work Folder/CCC/cc-workspaces/mahir/DEFINITION.md

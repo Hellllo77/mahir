@@ -1,0 +1,39 @@
+# Frontend Dev Agent — Runner Config
+
+producer_role: frontend-dev
+playbook_types: [software-dev]
+
+# Model routing
+model_tier: standard
+eval_spec: eval-spec.yml
+resolved_model: null
+
+# Tool catalog — standard names (Write/Read/Bash/WebSearch/WebFetch)
+tool_catalog:
+  - name: Read
+    description: Read UI specs, design tokens, existing templates, API contracts
+    scope: workspace
+  - name: Write
+    description: Write HTML templates, CSS, JS/TS, component files, config
+    scope: workspace
+  - name: Bash
+    restriction: full
+    description: npm/node, build tools, asset bundling, linting, bridge curl
+  - name: WebSearch
+    description: Research UI patterns, CSS solutions, framework docs
+    scope: unrestricted
+  - name: WebFetch
+    description: Read component library docs, design system references
+    scope: unrestricted
+
+# Execution model
+execution_mode: turn-based
+max_tool_calls_per_turn: 20
+context_window_budget: 80000
+retire_on: crew_tasks_complete
+
+# Work-announcement (DECISION-20260529-013)
+work_start_template: "WORK_START {task_id}: {summary}"
+work_complete_template: "WORK_COMPLETE {task_id}: {outcome}"
+announcement_target: "iris-coord-{workspace_slug}"
+announcement_kind: ack

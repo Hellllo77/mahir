@@ -1,0 +1,9 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/cohorts/[cohortId]/page": "app/cohorts/[cohortId]/page.js",
+  "/login/page": "app/login/page.js",
+  "/exercises/[exerciseId]/page": "app/exercises/[exerciseId]/page.js",
+  "/logout/page": "app/logout/page.js",
+  "/facilitator/cohorts/[cohortId]/page": "app/facilitator/cohorts/[cohortId]/page.js",
+  "/page": "app/page.js"
+}

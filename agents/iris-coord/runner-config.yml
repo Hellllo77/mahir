@@ -1,0 +1,36 @@
+# Coordinator Agent — Runner Config
+
+producer_role: coord
+playbook_types: [software-dev]
+
+# Model routing — coordination tier per ADR-052 §a + ADR-068
+model_tier: standard
+eval_spec: null
+resolved_model: null
+
+# Tool catalog
+tool_catalog:
+  - name: Read
+    description: Read DEFINITION.md, tasks.json, workspace-config.yml, specialist results and deliverables
+    scope: workspace
+  - name: Write
+    description: Write coordination notes, status summaries, task records
+    scope: workspace
+  - name: Bash
+    restriction: full
+    description: Bridge curl (post tasks + read messages), CCC API task creation, git status queries
+  - name: WebSearch
+    description: Research when investigating a blocker that requires external knowledge
+    scope: unrestricted
+
+# Execution model — coordinator is a persistent monitoring session, not a turn-based task consumer
+execution_mode: persistent
+max_tool_calls_per_turn: 20
+context_window_budget: 80000
+retire_on: all_tasks_complete     # retires when all decomposed project tasks reach done state
+
+# Work-announcement — coordinator posts FLEET_READY on boot, PROJECT_COMPLETE on retire
+boot_template: "FLEET_READY {workspace_slug}: {n_tasks} tasks seeded, dispatching to specialists"
+retire_template: "PROJECT_COMPLETE {workspace_slug}: all {n_tasks} tasks done"
+announcement_target: "iris-coord-{workspace_slug}"
+announcement_kind: ack

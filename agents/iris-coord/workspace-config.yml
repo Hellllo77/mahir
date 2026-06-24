@@ -1,0 +1,9 @@
+# Per-spawn config — written by CCC at provision time (S-provA).
+bridge_endpoint: http://localhost:9012
+workspace_slug: mahir
+agent_name: iris-coord-mahir
+producer_role: coord
+model_tier: sonnet
+ordinal: 0
+instrumentation_version: "1.1"
+prd_path: /Volumes/Work Folder/CCC/cc-workspaces/mahir/DEFINITION.md

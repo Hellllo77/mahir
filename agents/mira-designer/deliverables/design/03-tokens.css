@@ -1,0 +1,313 @@
+/**
+ * Mahir Design Tokens — Lightweight CSS Custom Properties
+ * Task: T-004 | Author: mira-designer-mahir | 2026-06-11
+ *
+ * Single-stack output (Next.js / Tailwind-compatible).
+ * Source of truth for wren-frontend. Import in app/globals.css.
+ *
+ * Token system: lightweight (single-stack, no DTCG toolchain required).
+ * Migration note: when scope expands to multi-brand/multi-platform, migrate to
+ * DTCG-format JSON + Style Dictionary v4.
+ */
+
+:root {
+  /* ─── COLOR: Primary (Teal/Navy) ─────────────────────────────────────── */
+  --color-primary-950: #0a1628;
+  --color-primary-900: #0f2341;
+  --color-primary-800: #1a3a5c;
+  --color-primary-700: #1e5480;
+  --color-primary-600: #1a6fa3;
+  --color-primary-500: #1b87c5;
+  --color-primary-400: #3ba3dd;
+  --color-primary-300: #72bfe8;
+  --color-primary-200: #b0d9f3;
+  --color-primary-100: #d8eef9;
+  --color-primary-50:  #eef7fd;
+
+  /* ─── COLOR: Accent (Amber) ──────────────────────────────────────────── */
+  --color-accent-700: #92400e;
+  --color-accent-600: #b45309;
+  --color-accent-500: #d97706;
+  --color-accent-400: #f59e0b;
+  --color-accent-200: #fde68a;
+  --color-accent-100: #fef3c7;
+  --color-accent-50:  #fffbeb;
+
+  /* ─── COLOR: Neutral (Warm Gray) ─────────────────────────────────────── */
+  --color-neutral-950: #0c0d0f;
+  --color-neutral-900: #111318;
+  --color-neutral-800: #1e2129;
+  --color-neutral-700: #374151;
+  --color-neutral-600: #4b5563;
+  --color-neutral-500: #6b7280;
+  --color-neutral-400: #9ca3af;
+  --color-neutral-300: #d1d5db;
+  --color-neutral-200: #e5e7eb;
+  --color-neutral-100: #f3f4f6;
+  --color-neutral-50:  #f9fafb;
+  --color-neutral-0:   #ffffff;
+
+  /* ─── COLOR: Semantic ────────────────────────────────────────────────── */
+  --color-success-700: #15803d;
+  --color-success-500: #22c55e;
+  --color-success-100: #dcfce7;
+  --color-success-50:  #f0fdf4;
+
+  --color-warning-700: #b45309;
+  --color-warning-500: #f59e0b;
+  --color-warning-100: #fef3c7;
+  --color-warning-50:  #fffbeb;
+
+  --color-error-700:   #b91c1c;
+  --color-error-500:   #ef4444;
+  --color-error-100:   #fee2e2;
+  --color-error-50:    #fef2f2;
+
+  --color-info-700:    #1d4ed8;
+  --color-info-500:    #3b82f6;
+  --color-info-100:    #dbeafe;
+  --color-info-50:     #eff6ff;
+
+  /* ─── COLOR: Productive Failure Phase ────────────────────────────────── */
+  --color-pf-not-started:   var(--color-neutral-300);       /* #d1d5db — neutral, no energy */
+  --color-pf-not-started-bg: var(--color-neutral-100);
+  --color-pf-not-started-text: var(--color-neutral-600);
+
+  --color-pf-exploring:     var(--color-accent-500);        /* #d97706 — amber, active */
+  --color-pf-exploring-bg:  var(--color-accent-100);
+  --color-pf-exploring-text: var(--color-accent-700);
+
+  --color-pf-unlocked:      var(--color-primary-500);       /* #1b87c5 — teal, breakthrough */
+  --color-pf-unlocked-bg:   var(--color-primary-100);
+  --color-pf-unlocked-text: var(--color-primary-700);
+
+  --color-pf-completed:     var(--color-success-500);       /* #22c55e — green, mastery */
+  --color-pf-completed-bg:  var(--color-success-100);
+  --color-pf-completed-text: var(--color-success-700);
+
+  --color-pf-fast:          var(--color-neutral-400);       /* #9ca3af — desaturated fast-unlock */
+  --color-pf-fast-bg:       var(--color-neutral-100);
+  --color-pf-fast-text:     var(--color-neutral-600);
+
+  /* ─── COLOR: Submission status ───────────────────────────────────────── */
+  --color-status-queued:    var(--color-neutral-400);
+  --color-status-queued-bg: var(--color-neutral-100);
+  --color-status-running:   var(--color-accent-500);
+  --color-status-running-bg: var(--color-accent-50);
+  --color-status-evaluated: var(--color-success-500);
+  --color-status-evaluated-bg: var(--color-success-50);
+  --color-status-failed:    var(--color-error-500);
+  --color-status-failed-bg: var(--color-error-50);
+
+  /* ─── TYPOGRAPHY ─────────────────────────────────────────────────────── */
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+
+  --font-feature-text: 'cv02', 'cv03', 'cv04', 'cv11';
+  --font-feature-tabular: 'tnum', 'cv02', 'cv03', 'cv04', 'cv11';
+
+  --text-xs:        11px;
+  --text-sm:        13px;
+  --text-base:      15px;
+  --text-md:        16px;
+  --text-lg:        18px;
+  --text-xl:        22px;
+  --text-2xl:       28px;
+  --text-3xl:       36px;
+  --text-mono-sm:   12px;
+  --text-mono-base: 14px;
+
+  --leading-tight:  1.25;
+  --leading-snug:   1.35;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.6;
+
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+
+  /* ─── SPACING (4px base) ─────────────────────────────────────────────── */
+  --space-0:  0px;
+  --space-px: 1px;
+  --space-0-5: 2px;
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* ─── BORDER RADIUS ──────────────────────────────────────────────────── */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:  12px;
+  --radius-xl:  16px;
+  --radius-full: 9999px;
+
+  /* ─── SHADOWS ────────────────────────────────────────────────────────── */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.10), 0 1px 2px -1px rgba(0, 0, 0, 0.10);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.10), 0 2px 4px -2px rgba(0, 0, 0, 0.10);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.10), 0 4px 6px -4px rgba(0, 0, 0, 0.10);
+
+  /* ─── BORDERS ────────────────────────────────────────────────────────── */
+  --border-width:       1px;
+  --border-width-2:     2px;
+  --border-color:       var(--color-neutral-200);
+  --border-color-focus: var(--color-primary-400);
+  --border-color-error: var(--color-error-500);
+
+  /* ─── MOTION ─────────────────────────────────────────────────────────── */
+  --duration-fast:   100ms;
+  --duration-base:   200ms;
+  --duration-slow:   350ms;
+  --easing-default:  cubic-bezier(0.4, 0, 0.2, 1);
+  --easing-in:       cubic-bezier(0.4, 0, 1, 1);
+  --easing-out:      cubic-bezier(0, 0, 0.2, 1);
+
+  /* ─── LAYOUT ─────────────────────────────────────────────────────────── */
+  --sidebar-width:          240px;
+  --sidebar-width-collapsed: 64px;
+  --topbar-height:           56px;
+  --content-max-width:      1280px;
+  --content-padding-x:       24px;
+
+  /* ─── Z-INDEX ─────────────────────────────────────────────────────────── */
+  --z-base:     0;
+  --z-raised:  10;
+  --z-dropdown: 100;
+  --z-sticky:   200;
+  --z-overlay:  300;
+  --z-modal:    400;
+  --z-toast:    500;
+
+  /* ─── COMPONENT: Focus ring ──────────────────────────────────────────── */
+  --focus-ring:         0 0 0 2px var(--color-neutral-0), 0 0 0 4px var(--color-primary-400);
+  --focus-ring-inset:   inset 0 0 0 2px var(--color-primary-400);
+
+  /* ─── COMPONENT: Card ────────────────────────────────────────────────── */
+  --card-bg:          var(--color-neutral-0);
+  --card-border:      var(--color-neutral-200);
+  --card-radius:      var(--radius-md);
+  --card-shadow:      var(--shadow-sm);
+  --card-padding:     var(--space-6);
+  --card-padding-sm:  var(--space-4);
+
+  /* ─── COMPONENT: Button ──────────────────────────────────────────────── */
+  --btn-height-sm:    32px;
+  --btn-height-md:    40px;
+  --btn-height-lg:    48px;
+  --btn-padding-x-sm: var(--space-3);
+  --btn-padding-x-md: var(--space-4);
+  --btn-padding-x-lg: var(--space-6);
+  --btn-radius:       var(--radius-sm);
+  --btn-text-sm:      var(--text-sm);
+  --btn-text-md:      var(--text-base);
+  --btn-text-lg:      var(--text-md);
+
+  /* ─── COMPONENT: Input ───────────────────────────────────────────────── */
+  --input-height-sm:    32px;
+  --input-height-md:    40px;
+  --input-height-lg:    48px;
+  --input-padding-x:    var(--space-3);
+  --input-bg:           var(--color-neutral-0);
+  --input-border:       var(--color-neutral-300);
+  --input-border-hover: var(--color-neutral-400);
+  --input-radius:       var(--radius-sm);
+  --input-text:         var(--text-base);
+  --input-placeholder:  var(--color-neutral-400);
+
+  /* ─── COMPONENT: Badge/Chip ──────────────────────────────────────────── */
+  --badge-height-sm:   20px;
+  --badge-height-md:   24px;
+  --badge-padding-x:   var(--space-2);
+  --badge-radius:      var(--radius-sm);
+  --badge-text:        var(--text-xs);
+  --badge-weight:      var(--weight-medium);
+
+  /* ─── COMPONENT: Table ───────────────────────────────────────────────── */
+  --table-row-height:    48px;
+  --table-row-height-sm: 40px;
+  --table-header-bg:     var(--color-neutral-50);
+  --table-border:        var(--color-neutral-200);
+  --table-row-hover:     var(--color-primary-50);
+  --table-padding-x:     var(--space-4);
+  --table-text:          var(--text-sm);
+  --table-header-text:   var(--text-xs);
+  --table-header-weight: var(--weight-semibold);
+
+  /* ─── COMPONENT: Sidebar ─────────────────────────────────────────────── */
+  --sidebar-bg:          var(--color-primary-900);
+  --sidebar-text:        rgba(255, 255, 255, 0.75);
+  --sidebar-text-active: var(--color-neutral-0);
+  --sidebar-item-active-bg: rgba(255, 255, 255, 0.1);
+  --sidebar-item-hover-bg: rgba(255, 255, 255, 0.06);
+  --sidebar-border:      rgba(255, 255, 255, 0.08);
+
+  /* ─── COMPONENT: TopBar ──────────────────────────────────────────────── */
+  --topbar-bg:     var(--color-neutral-0);
+  --topbar-border: var(--color-neutral-200);
+  --topbar-shadow: var(--shadow-xs);
+
+  /* ─── COMPONENT: Progress bar ────────────────────────────────────────── */
+  --progress-track-bg:   var(--color-neutral-200);
+  --progress-track-h:    8px;
+  --progress-track-h-sm: 4px;
+  --progress-radius:     var(--radius-full);
+
+  /* ─── COMPONENT: Code editor ─────────────────────────────────────────── */
+  --editor-bg:         #1e1e2e;  /* dark surface for code, Catppuccin-inspired */
+  --editor-border:     var(--color-neutral-700);
+  --editor-text:       #cdd6f4;
+  --editor-line-num:   #585b70;
+  --editor-selection:  rgba(137, 180, 250, 0.2);
+  --editor-radius:     var(--radius-md);
+  --editor-min-height: 280px;
+  --editor-font:       var(--font-mono);
+  --editor-font-size:  var(--text-mono-base);
+}
+
+/* ─── Reduced motion override ───────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast:  0ms;
+    --duration-base:  0ms;
+    --duration-slow:  0ms;
+  }
+}
+
+/* ─── Global baseline ───────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  color: var(--color-neutral-900);
+  background: var(--color-neutral-50);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: var(--font-feature-text);
+}
+
+/* Focus ring — global */
+:focus-visible {
+  outline: 2px solid var(--color-primary-400);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Tabular numbers for data-heavy surfaces */
+.tabular-nums {
+  font-feature-settings: var(--font-feature-tabular);
+}
