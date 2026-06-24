@@ -95,9 +95,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="text-xs text-muted" style={{ marginTop: "var(--space-6)", textAlign: "center" }}>
-            Using corporate SSO? Your admin will provide the sign-in link.
-          </p>
         </div>
       </div>
     </div>
