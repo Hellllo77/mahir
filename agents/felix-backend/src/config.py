@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     log_level: str = "INFO"
     api_v1_prefix: str = "/v1"
+    cors_origins: str = "http://localhost:3000"
 
 
 settings = Settings()
