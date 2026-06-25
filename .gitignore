@@ -31,5 +31,9 @@ build/
 # Agent ephemeral state
 agents/*/current_task.json
 
+# Next.js build output
+.next/
+out/
+
 # OS
 .DS_Store
