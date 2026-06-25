@@ -5,6 +5,7 @@ import type {
   TokenResponse,
   Me,
   CohortSummary,
+  CohortCreate,
   Module,
   Exercise,
   ConsolidationContent,
@@ -123,6 +124,13 @@ export async function getMe(): Promise<Me> {
 
 export async function getCohorts(): Promise<CohortSummary[]> {
   return request<CohortSummary[]>("/cohorts");
+}
+
+export async function createCohort(body: CohortCreate): Promise<CohortSummary> {
+  return request<CohortSummary>("/cohorts", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }
 
 // --- Curriculum ---

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getCohorts, getMe, ApiClientError } from "@/lib/api-client";
+import { getCohorts, createCohort, getMe, ApiClientError } from "@/lib/api-client";
 import type { CohortSummary, Me } from "@/lib/api-types";
 import { AppShell } from "@/components/layout/AppShell";
 
@@ -24,12 +24,100 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function CreateCohortForm({ onCreated, onCancel }: { onCreated: (c: CohortSummary) => void; onCancel: () => void }) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      const cohort = await createCohort({
+        name: name.trim(),
+        description: description.trim() || undefined,
+        start_date: startDate || undefined,
+      });
+      onCreated(cohort);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create cohort.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="card" style={{ marginTop: "var(--space-4)" }}>
+      <h2 style={{ marginBottom: "var(--space-6)" }}>New cohort</h2>
+      <form onSubmit={handleSubmit} className="stack">
+        <div className="form-group">
+          <label className="form-label" htmlFor="cohort-name">Name <span aria-hidden="true">*</span></label>
+          <input
+            id="cohort-name"
+            type="text"
+            className="form-input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            placeholder="e.g. Cohort A — Q3 2026"
+            disabled={submitting}
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label" htmlFor="cohort-description">Description <span className="text-muted">(optional)</span></label>
+          <input
+            id="cohort-description"
+            type="text"
+            className="form-input"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Brief description of this cohort"
+            disabled={submitting}
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label" htmlFor="cohort-start-date">Start date <span className="text-muted">(optional)</span></label>
+          <input
+            id="cohort-start-date"
+            type="date"
+            className="form-input"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            disabled={submitting}
+          />
+        </div>
+
+        {error && <div className="alert alert-error text-sm">{error}</div>}
+
+        <div className="cluster" style={{ gap: "var(--space-3)", justifyContent: "flex-end" }}>
+          <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={submitting}>
+            Cancel
+          </button>
+          <button type="submit" className="btn btn-primary" disabled={submitting || !name.trim()}>
+            {submitting ? (
+              <><span className="spinner" aria-hidden="true" /> Creating…</>
+            ) : (
+              "Create cohort"
+            )}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 export default function FacilitatorCohortsPage() {
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
   const [cohorts, setCohorts] = useState<CohortSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -50,6 +138,11 @@ export default function FacilitatorCohortsPage() {
     load();
   }, [router]);
 
+  function handleCohortCreated(newCohort: CohortSummary) {
+    setCohorts((prev) => [newCohort, ...prev]);
+    setShowCreateForm(false);
+  }
+
   return (
     <AppShell userName={me?.display_name}>
       {loading && (
@@ -63,14 +156,28 @@ export default function FacilitatorCohortsPage() {
 
       {!loading && !error && (
         <div className="stack" style={{ maxWidth: "48rem" }}>
-          <div>
-            <h1>Cohorts</h1>
-            <p className="text-muted" style={{ marginTop: "var(--space-2)" }}>
-              Select a cohort to view learner progress and manage gate overrides.
-            </p>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "var(--space-4)", flexWrap: "wrap" }}>
+            <div>
+              <h1>Cohorts</h1>
+              <p className="text-muted" style={{ marginTop: "var(--space-2)" }}>
+                Select a cohort to view learner progress and manage gate overrides.
+              </p>
+            </div>
+            {!showCreateForm && (
+              <button className="btn btn-primary" onClick={() => setShowCreateForm(true)}>
+                + Create cohort
+              </button>
+            )}
           </div>
 
-          {cohorts.length === 0 ? (
+          {showCreateForm && (
+            <CreateCohortForm
+              onCreated={handleCohortCreated}
+              onCancel={() => setShowCreateForm(false)}
+            />
+          )}
+
+          {cohorts.length === 0 && !showCreateForm ? (
             <div className="empty-state">
               <p>No cohorts yet.</p>
             </div>

@@ -21,11 +21,19 @@ function getLogoHref(): string {
   return isStaff ? "/facilitator/cohorts" : "/dashboard";
 }
 
+function isStaffRole(): boolean {
+  if (typeof window === "undefined") return false;
+  const role = getRole();
+  return role === "org_admin" || role === "super_admin" || role === "facilitator";
+}
+
 export function AppShell({ sidebar, children, userName, isFacilitator, cohortId }: Props) {
   const [logoHref, setLogoHref] = useState("/");
+  const [showCohortsNav, setShowCohortsNav] = useState(false);
 
   useEffect(() => {
     setLogoHref(getLogoHref());
+    setShowCohortsNav(isStaffRole());
   }, []);
 
   return (
@@ -45,6 +53,14 @@ export function AppShell({ sidebar, children, userName, isFacilitator, cohortId 
         <span className="text-xs text-muted" style={{ marginLeft: "var(--space-1)" }}>
           Co-Worker
         </span>
+
+        {showCohortsNav && (
+          <nav style={{ marginLeft: "var(--space-6)" }}>
+            <Link href="/facilitator/cohorts" className="text-sm text-muted" style={{ textDecoration: "none" }}>
+              Cohorts
+            </Link>
+          </nav>
+        )}
 
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "var(--space-4)" }}>
           {isFacilitator && cohortId && (

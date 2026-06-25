@@ -64,6 +64,10 @@ export default function FacilitatorCohortPage() {
 
       {!loading && !error && (
         <div className="stack" style={{ maxWidth: "72rem" }}>
+          <Link href="/facilitator/cohorts" className="text-sm text-muted" style={{ textDecoration: "none" }}>
+            ← Back to Cohorts
+          </Link>
+
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "var(--space-4)", flexWrap: "wrap" }}>
             <div>
               <h1>Cohort overview</h1>

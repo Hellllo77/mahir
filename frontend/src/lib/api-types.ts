@@ -165,6 +165,12 @@ export interface CohortSummary {
   learner_count: number;
 }
 
+export interface CohortCreate {
+  name: string;
+  description?: string;
+  start_date?: string;
+}
+
 export interface GateOverride {
   action: "unlock_consolidation" | "mark_completed" | "reset_exploring";
   reason: string;
