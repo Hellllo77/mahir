@@ -1,6 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { getRole } from "@/lib/api-client";
 
 interface Props {
   sidebar?: React.ReactNode;
@@ -10,12 +12,27 @@ interface Props {
   cohortId?: string;
 }
 
+function getLogoHref(): string {
+  if (typeof window === "undefined") return "/";
+  const token = localStorage.getItem("mahir_token");
+  if (!token) return "/";
+  const role = getRole();
+  const isStaff = role === "org_admin" || role === "super_admin" || role === "facilitator";
+  return isStaff ? "/facilitator/cohorts" : "/dashboard";
+}
+
 export function AppShell({ sidebar, children, userName, isFacilitator, cohortId }: Props) {
+  const [logoHref, setLogoHref] = useState("/");
+
+  useEffect(() => {
+    setLogoHref(getLogoHref());
+  }, []);
+
   return (
     <div className={sidebar ? "app-shell" : undefined} style={!sidebar ? { minHeight: "100vh", display: "flex", flexDirection: "column" } : undefined}>
       <header className="app-header">
         <Link
-          href="/"
+          href={logoHref}
           style={{
             fontWeight: "var(--font-weight-bold)",
             fontSize: "var(--font-size-xl)",

@@ -53,6 +53,19 @@ export function clearToken(): void {
   localStorage.removeItem("mahir_token");
 }
 
+export function saveRole(role: string): void {
+  localStorage.setItem("mahir_role", role);
+}
+
+export function getRole(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("mahir_role");
+}
+
+export function clearRole(): void {
+  localStorage.removeItem("mahir_role");
+}
+
 async function request<T>(
   path: string,
   options: RequestInit & { skipAuth?: boolean } = {}

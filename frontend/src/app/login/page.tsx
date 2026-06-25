@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { login, saveToken, getMe } from "@/lib/api-client";
+import { login, saveToken, saveRole, getMe } from "@/lib/api-client";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,6 +19,7 @@ export default function LoginPage() {
       const { access_token } = await login(email, password);
       saveToken(access_token);
       const me = await getMe();
+      saveRole(me.global_role);
       const isStaff = me.global_role === "org_admin" || me.global_role === "super_admin" || me.global_role === "facilitator";
       if (isStaff) {
         router.push("/facilitator/cohorts");
