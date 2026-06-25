@@ -1,0 +1,91 @@
+# Local dev stack: Postgres 16 + Redis + FastAPI + Next.js
+# Usage: docker compose up
+# Secrets (ANTHROPIC_API_KEY, JWT_SECRET_KEY, etc.) go in .env.local — see config.py for full list.
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: mahir
+      POSTGRES_PASSWORD: mahir
+      POSTGRES_DB: mahir
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mahir"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: agents/felix-backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://mahir:mahir@postgres:5432/mahir
+      DATABASE_URL_SYNC: postgresql://mahir:mahir@postgres:5432/mahir
+      REDIS_URL: redis://redis:6379/0
+      APP_ENV: development
+      JWT_SECRET_KEY: dev-secret-change-in-prod
+      CORS_ORIGINS: http://localhost:3000
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    env_file:
+      - path: .env.local
+        required: false
+    volumes:
+      - ./agents/felix-backend/src:/app/src
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  worker:
+    build:
+      context: agents/felix-backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://mahir:mahir@postgres:5432/mahir
+      DATABASE_URL_SYNC: postgresql://mahir:mahir@postgres:5432/mahir
+      REDIS_URL: redis://redis:6379/0
+      APP_ENV: development
+      JWT_SECRET_KEY: dev-secret-change-in-prod
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    env_file:
+      - path: .env.local
+        required: false
+    volumes:
+      - ./agents/felix-backend/src:/app/src
+    depends_on:
+      - api
+    command: rq worker --url redis://redis:6379/0 evaluation evaluation_batch
+
+  web:
+    build:
+      context: frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_BASE: http://localhost:8000/v1
+    volumes:
+      - ./frontend/src:/app/src
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
