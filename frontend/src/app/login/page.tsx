@@ -19,11 +19,16 @@ export default function LoginPage() {
       const { access_token } = await login(email, password);
       saveToken(access_token);
       const me = await getMe();
-      const activeEnrolment = me.enrolments.find((en) => en.status === "active");
-      if (activeEnrolment) {
-        router.push(`/cohorts/${activeEnrolment.cohort_id}`);
+      const isStaff = me.global_role === "org_admin" || me.global_role === "super_admin" || me.global_role === "facilitator";
+      if (isStaff) {
+        router.push("/facilitator/cohorts");
       } else {
-        router.push("/dashboard");
+        const activeEnrolment = me.enrolments.find((en) => en.status === "active");
+        if (activeEnrolment) {
+          router.push(`/cohorts/${activeEnrolment.cohort_id}`);
+        } else {
+          router.push("/dashboard");
+        }
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login failed. Check your credentials.");
