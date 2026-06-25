@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.auth.router import me_router, router as auth_router
+from src.cohorts.router import router as cohorts_router
 from src.config import settings
 from src.curriculum.router import router as curriculum_router
 from src.progress.router import facilitator_router, router as progress_router
@@ -43,6 +44,7 @@ v1 = FastAPI(title="Mahir API v1")
 
 v1.include_router(auth_router)
 v1.include_router(me_router)
+v1.include_router(cohorts_router)
 v1.include_router(curriculum_router)
 v1.include_router(progress_router)
 v1.include_router(facilitator_router)
