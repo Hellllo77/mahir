@@ -217,6 +217,7 @@ pre {
   border-radius: var(--radius-md);
   border: 1px solid;
   font-size: var(--font-size-sm);
+  max-width: 48rem;
 }
 
 .alert-info    { background: var(--color-info-bg);    border-color: var(--color-info);    color: var(--color-info);    }
