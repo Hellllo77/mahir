@@ -70,17 +70,22 @@ async function request<T>(
   const res = await fetch(`${API_BASE}${path}`, { ...fetchOptions, headers });
 
   if (!res.ok) {
-    let errorBody: { type?: string; message?: string; details?: Record<string, unknown> } = {};
+    let errorBody: { type?: string; message?: string; detail?: string | { message?: string }; details?: Record<string, unknown> } = {};
     try {
       errorBody = await res.json();
     } catch {
       // non-JSON error body
     }
     if (res.status === 409 && errorBody.type === "phase_locked") throw new PhaseLocked();
+    const humanMessage =
+      (typeof errorBody.detail === "object" ? errorBody.detail?.message : undefined) ??
+      (typeof errorBody.detail === "string" ? errorBody.detail : undefined) ??
+      errorBody.message ??
+      `Request failed with status ${res.status}`;
     throw new ApiClientError(
       res.status,
       errorBody.type ?? "unknown_error",
-      errorBody.message ?? `Request failed with status ${res.status}`,
+      humanMessage,
       errorBody.details
     );
   }
@@ -142,7 +147,7 @@ export async function getSubmission(submissionId: string): Promise<SubmissionDet
 // --- Progress ---
 
 export async function getMyProgress(enrolmentId: string): Promise<ExerciseProgress[]> {
-  return request<ExerciseProgress[]>(`/me/progress?enrolmentId=${enrolmentId}`);
+  return request<ExerciseProgress[]>(`/me/progress?enrolment_id=${enrolmentId}`);
 }
 
 export async function getExerciseProgress(exerciseId: string): Promise<ExerciseProgress> {
