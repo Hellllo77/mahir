@@ -71,24 +71,21 @@ async function request<T>(
   const res = await fetch(`${API_BASE}${path}`, { ...fetchOptions, headers });
 
   if (!res.ok) {
-    let errorBody: { type?: string; message?: string; detail?: string | { message?: string }; details?: Record<string, unknown> } = {};
+    let errorBody: { type?: string; message?: string; detail?: string | { type?: string; message?: string }; details?: Record<string, unknown> } = {};
     try {
       errorBody = await res.json();
     } catch {
       // non-JSON error body
     }
-    if (res.status === 409 && errorBody.type === "phase_locked") throw new PhaseLocked();
+    const detailObj = typeof errorBody.detail === "object" ? errorBody.detail : undefined;
+    const errorType = detailObj?.type ?? errorBody.type ?? "unknown_error";
+    if (res.status === 409 && errorType === "phase_locked") throw new PhaseLocked();
     const humanMessage =
-      (typeof errorBody.detail === "object" ? errorBody.detail?.message : undefined) ??
+      detailObj?.message ??
       (typeof errorBody.detail === "string" ? errorBody.detail : undefined) ??
       errorBody.message ??
       `Request failed with status ${res.status}`;
-    throw new ApiClientError(
-      res.status,
-      errorBody.type ?? "unknown_error",
-      humanMessage,
-      errorBody.details
-    );
+    throw new ApiClientError(res.status, errorType, humanMessage, errorBody.details);
   }
 
   if (res.status === 204) return undefined as T;
