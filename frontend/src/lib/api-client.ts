@@ -4,6 +4,7 @@
 import type {
   TokenResponse,
   Me,
+  CohortSummary,
   Module,
   Exercise,
   ConsolidationContent,
@@ -106,6 +107,12 @@ export async function login(email: string, password: string): Promise<TokenRespo
 
 export async function getMe(): Promise<Me> {
   return request<Me>("/me");
+}
+
+// --- Cohorts ---
+
+export async function getCohorts(): Promise<CohortSummary[]> {
+  return request<CohortSummary[]>("/cohorts");
 }
 
 // --- Curriculum ---
