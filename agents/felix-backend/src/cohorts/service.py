@@ -1,7 +1,9 @@
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.db.models.auth import Cohort, Enrolment, User, UserGlobalRole
+from src.cohorts.schemas import CohortCreate
+from src.db.models.auth import Cohort, CohortStatus, Enrolment, User, UserGlobalRole
+from src.db.uuidv7 import uuid7_str
 from src.lib.exceptions import forbidden
 
 _ALLOWED = {UserGlobalRole.org_admin, UserGlobalRole.super_admin, UserGlobalRole.facilitator}
@@ -40,3 +42,28 @@ async def list_cohorts(db: AsyncSession, user: User) -> list[dict]:
         }
         for cohort, count in result.all()
     ]
+
+
+async def create_cohort(db: AsyncSession, user: User, payload: CohortCreate) -> dict:
+    if user.global_role not in _ALLOWED:
+        raise forbidden("org_admin, super_admin, or facilitator role required.")
+
+    cohort = Cohort(
+        id=uuid7_str(),
+        organization_id=user.organization_id,
+        name=payload.name,
+        description=payload.description,
+        starts_on=payload.start_date.isoformat() if payload.start_date else None,
+        status=CohortStatus.draft,
+    )
+    db.add(cohort)
+    await db.commit()
+    await db.refresh(cohort)
+
+    return {
+        "id": cohort.id,
+        "name": cohort.name,
+        "description": cohort.description,
+        "status": cohort.status if isinstance(cohort.status, str) else cohort.status.value,
+        "starts_on": cohort.starts_on,
+    }

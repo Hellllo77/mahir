@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, status
 
 from src.cohorts import schemas, service
 from src.lib.deps import CurrentUser, DbDep
@@ -9,3 +9,8 @@ router = APIRouter(tags=["cohorts"])
 @router.get("/cohorts", response_model=list[schemas.CohortSummary])
 async def list_cohorts(db: DbDep, current_user: CurrentUser):
     return await service.list_cohorts(db, current_user)
+
+
+@router.post("/cohorts", response_model=schemas.CohortDetail, status_code=status.HTTP_201_CREATED)
+async def create_cohort(payload: schemas.CohortCreate, db: DbDep, current_user: CurrentUser):
+    return await service.create_cohort(db, current_user, payload)

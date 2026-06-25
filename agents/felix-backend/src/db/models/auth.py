@@ -79,7 +79,8 @@ class Cohort(AuditMixin, Base):
 
     organization_id = Column(String(36), ForeignKey("organizations.id"), nullable=False)
     name = Column(Text, nullable=False)
-    curriculum_id = Column(String(36), ForeignKey("curricula.id"), nullable=False)
+    description = Column(Text, nullable=True)
+    curriculum_id = Column(String(36), ForeignKey("curricula.id"), nullable=True)
     starts_on = Column(Text, nullable=True)  # date stored as ISO string
     ends_on = Column(Text, nullable=True)
     status = Column(Enum(CohortStatus), nullable=False, default=CohortStatus.draft)
