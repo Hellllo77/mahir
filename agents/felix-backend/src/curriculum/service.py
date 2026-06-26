@@ -5,18 +5,19 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.db.models.auth import Cohort, Enrolment, User
+from src.db.models.auth import Cohort, Enrolment, User, UserGlobalRole
 from src.db.models.curriculum import ConsolidationContent, Exercise, Module
 from src.db.models.progress import ExercisePhase, ExerciseProgress
 from src.lib.exceptions import forbidden, not_found, phase_locked
 from src.lib.tenant import assert_cohort_access
+
+_ADMIN_ROLES = {UserGlobalRole.super_admin, UserGlobalRole.org_admin, UserGlobalRole.facilitator}
 
 
 async def list_modules(db: AsyncSession, cohort_id: str, user: User) -> list[dict]:
     """Return ordered modules for the cohort's pinned curriculum (tenant-scoped)."""
     cohort = await assert_cohort_access(db, cohort_id, user)
 
-    # Verify user is enrolled in this cohort
     enrolment_result = await db.execute(
         select(Enrolment).where(
             Enrolment.cohort_id == cohort_id,
@@ -25,7 +26,7 @@ async def list_modules(db: AsyncSession, cohort_id: str, user: User) -> list[dic
         )
     )
     enrolment = enrolment_result.scalar_one_or_none()
-    if enrolment is None:
+    if enrolment is None and user.global_role not in _ADMIN_ROLES:
         raise forbidden("Not enrolled in this cohort.")
 
     result = await db.execute(
@@ -36,14 +37,16 @@ async def list_modules(db: AsyncSession, cohort_id: str, user: User) -> list[dic
     )
     modules = result.scalars().all()
 
-    # Fetch progress for this enrolment to annotate phase
-    progress_result = await db.execute(
-        select(ExerciseProgress).where(
-            ExerciseProgress.enrolment_id == enrolment.id,
-            ExerciseProgress.deleted_at.is_(None),
+    # Fetch progress if the user has an enrolment; admins without one see not_started
+    progress_map: dict[str, str] = {}
+    if enrolment is not None:
+        progress_result = await db.execute(
+            select(ExerciseProgress).where(
+                ExerciseProgress.enrolment_id == enrolment.id,
+                ExerciseProgress.deleted_at.is_(None),
+            )
         )
-    )
-    progress_map = {p.exercise_id: p.phase.value for p in progress_result.scalars().all()}
+        progress_map = {p.exercise_id: p.phase.value for p in progress_result.scalars().all()}
 
     return [
         {
