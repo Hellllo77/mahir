@@ -160,7 +160,9 @@ async def update_cohort(
         allowed_next = _ALLOWED_STATUS_TRANSITIONS.get(current, set())
         if status not in allowed_next:
             raise forbidden(f"Cannot transition cohort from '{current}' to '{status}'.")
-        cohort.status = status
+        # Assign enum member (not plain string) so asyncpg uses the enum OID,
+        # which works with both native PG ENUM columns and TEXT columns.
+        cohort.status = CohortStatus(status)
         new_status = status
 
     if name is not None:
