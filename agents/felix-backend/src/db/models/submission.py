@@ -23,7 +23,7 @@ class Submission(AuditMixin, Base):
     attempt_number = Column(Integer, nullable=False)
     payload = Column(Text, nullable=False)  # JSONB; schema_version required
     artifact_refs = Column(Text, nullable=True)  # JSONB nullable
-    status = Column(Enum(SubmissionStatus), nullable=False, default=SubmissionStatus.queued)
+    status = Column(Enum(SubmissionStatus, native_enum=False), nullable=False, default=SubmissionStatus.queued)
     idempotency_key = Column(Text, unique=True, nullable=False)
     submitted_at = Column(DateTime(timezone=True), nullable=False)
 
@@ -47,7 +47,7 @@ class EvaluationResult(AuditMixin, Base):
     scenario_results = Column(Text, nullable=True)  # JSONB [{scenario_id, passed, detail}]
     rubric_scores = Column(Text, nullable=True)   # JSONB [{criterion_id, met, score, confidence, severity, evidence}]
     overall_score = Column(Numeric, nullable=False)
-    productive_failure_signal = Column(Enum(PFSignal), nullable=False)
+    productive_failure_signal = Column(Enum(PFSignal, native_enum=False), nullable=False)
     detected_approach = Column(Text, nullable=True)
     confidence = Column(Numeric, nullable=True)
     passed = Column(Boolean, nullable=False)

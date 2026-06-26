@@ -21,10 +21,10 @@ class CurriculumStatus(str, enum.Enum):
 class Curriculum(AuditMixin, Base):
     __tablename__ = "curricula"
 
-    edition = Column(Enum(CurriculumEdition), nullable=False)
+    edition = Column(Enum(CurriculumEdition, native_enum=False), nullable=False)
     title = Column(Text, nullable=False)
     version = Column(Text, nullable=False)
-    status = Column(Enum(CurriculumStatus), nullable=False, default=CurriculumStatus.draft)
+    status = Column(Enum(CurriculumStatus, native_enum=False), nullable=False, default=CurriculumStatus.draft)
 
     modules = relationship("Module", back_populates="curriculum", lazy="select", order_by="Module.sequence_index")
 

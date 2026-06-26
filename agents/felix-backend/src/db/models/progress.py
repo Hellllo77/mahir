@@ -21,7 +21,7 @@ class ExerciseProgress(AuditMixin, Base):
 
     enrolment_id = Column(String(36), ForeignKey("enrolments.id"), nullable=False)
     exercise_id = Column(String(36), ForeignKey("exercises.id"), nullable=False)
-    phase = Column(Enum(ExercisePhase), nullable=False, default=ExercisePhase.not_started)
+    phase = Column(Enum(ExercisePhase, native_enum=False), nullable=False, default=ExercisePhase.not_started)
     attempts_total = Column(Integer, nullable=False, default=0)
     attempts_genuine = Column(Integer, nullable=False, default=0)
     distinct_approaches = Column(Integer, nullable=False, default=0)
