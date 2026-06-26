@@ -8,6 +8,7 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from src.config import settings
 from src.db.base import Base
@@ -28,7 +29,7 @@ from src.main import app
 # Use a separate test DB URL (override via TEST_DATABASE_URL env var)
 TEST_DB_URL = settings.database_url.replace("/mahir", "/mahir_test")
 
-_test_engine = create_async_engine(TEST_DB_URL, pool_pre_ping=True)
+_test_engine = create_async_engine(TEST_DB_URL, poolclass=NullPool)
 _TestSessionLocal = async_sessionmaker(_test_engine, expire_on_commit=False)
 
 

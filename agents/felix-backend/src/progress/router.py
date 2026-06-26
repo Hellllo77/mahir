@@ -30,6 +30,14 @@ async def get_cohort_learners(cohort_id: str, db: DbDep = None, current_user: Cu
     return await service.get_cohort_learner_progress(db, cohort_id, current_user)
 
 
+@facilitator_router.get(
+    "/cohorts/{cohort_id}/members/{user_id}/progress",
+    response_model=schemas.LearnerProgressSummary,
+)
+async def get_member_progress(cohort_id: str, user_id: str, db: DbDep = None, current_user: CurrentUser = None):
+    return await service.get_member_progress(db, cohort_id, user_id, current_user)
+
+
 @facilitator_router.post(
     "/progress/{progress_id}/override", response_model=schemas.ExerciseProgressOut
 )

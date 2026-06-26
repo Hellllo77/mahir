@@ -26,6 +26,7 @@ class ExerciseProgressOut(BaseModel):
 
 
 class LearnerExerciseSummary(BaseModel):
+    progress_id: Optional[str] = None
     exercise_id: str
     phase: str
     attempts_total: int = 0

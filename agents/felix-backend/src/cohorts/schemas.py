@@ -34,3 +34,16 @@ class CohortUpdate(BaseModel):
 
 class InviteLink(BaseModel):
     url: str
+
+
+class EnrolRequest(BaseModel):
+    email: str
+    display_name: Optional[str] = None
+    password: Optional[str] = None
+
+
+class EnrolResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    enrolment_id: str

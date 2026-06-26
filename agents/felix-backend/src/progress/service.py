@@ -98,6 +98,7 @@ async def get_cohort_learner_progress(db: AsyncSession, cohort_id: str, user: Us
         for p in progress_records:
             latest_signal = await _get_latest_signal(db, enrolment.id, p.exercise_id)
             exercise_summaries.append({
+                "progress_id": p.id,
                 "exercise_id": p.exercise_id,
                 "phase": p.phase.value,
                 "attempts_total": p.attempts_total,
@@ -113,6 +114,73 @@ async def get_cohort_learner_progress(db: AsyncSession, cohort_id: str, user: Us
             "exercises": exercise_summaries,
         })
     return summaries
+
+
+async def get_member_progress(
+    db: AsyncSession, cohort_id: str, target_user_id: str, user: User
+) -> dict:
+    """Per-member exercise progress drill-down — facilitator/admin only."""
+    if user.global_role not in (UserGlobalRole.facilitator, UserGlobalRole.org_admin, UserGlobalRole.super_admin):
+        cohort_enrolment = await _get_enrolment(db, cohort_id, user.id)
+        if cohort_enrolment is None or cohort_enrolment.role != EnrolmentRole.facilitator:
+            raise forbidden("Facilitator role required.")
+
+    cohort_result = await db.execute(
+        select(Cohort).where(
+            Cohort.id == cohort_id,
+            Cohort.organization_id == user.organization_id,
+            Cohort.deleted_at.is_(None),
+        )
+    )
+    cohort = cohort_result.scalar_one_or_none()
+    if cohort is None:
+        raise not_found("Cohort")
+
+    learner_result = await db.execute(
+        select(User).where(User.id == target_user_id, User.deleted_at.is_(None))
+    )
+    learner = learner_result.scalar_one_or_none()
+    if learner is None:
+        raise not_found("User")
+
+    enrolment_result = await db.execute(
+        select(Enrolment).where(
+            Enrolment.cohort_id == cohort_id,
+            Enrolment.user_id == target_user_id,
+            Enrolment.deleted_at.is_(None),
+        )
+    )
+    enrolment = enrolment_result.scalar_one_or_none()
+    if enrolment is None:
+        raise not_found("Enrolment")
+
+    progress_result = await db.execute(
+        select(ExerciseProgress).where(
+            ExerciseProgress.enrolment_id == enrolment.id,
+            ExerciseProgress.deleted_at.is_(None),
+        )
+    )
+    progress_records = progress_result.scalars().all()
+
+    exercise_summaries = []
+    for p in progress_records:
+        latest_signal = await _get_latest_signal(db, enrolment.id, p.exercise_id)
+        exercise_summaries.append({
+            "progress_id": p.id,
+            "exercise_id": p.exercise_id,
+            "phase": p.phase.value,
+            "attempts_total": p.attempts_total,
+            "attempts_genuine": p.attempts_genuine,
+            "explored": p.explored,
+            "latest_signal": latest_signal,
+        })
+
+    return {
+        "user_id": learner.id,
+        "display_name": learner.display_name,
+        "enrolment_id": enrolment.id,
+        "exercises": exercise_summaries,
+    }
 
 
 async def apply_facilitator_override(

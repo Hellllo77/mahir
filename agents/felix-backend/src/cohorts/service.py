@@ -1,14 +1,18 @@
 from datetime import datetime, timedelta, timezone
 
-from jose import jwt
+from jose import JWTError, jwt
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.cohorts.schemas import CohortCreate
+from src.cohorts.schemas import CohortCreate, EnrolRequest
 from src.config import settings
-from src.db.models.auth import Cohort, CohortStatus, Enrolment, User, UserGlobalRole
+from src.db.models.auth import (
+    Cohort, CohortStatus, Enrolment, EnrolmentRole, EnrolmentStatus,
+    User, UserAuthProvider, UserGlobalRole, UserStatus,
+)
 from src.db.uuidv7 import uuid7_str
-from src.lib.exceptions import forbidden, not_found
+from src.lib.exceptions import bad_request, conflict, forbidden, not_found, unauthorized
+from src.lib.jwt import create_access_token, hash_password
 
 _ALLOWED = {UserGlobalRole.org_admin, UserGlobalRole.super_admin, UserGlobalRole.facilitator}
 
@@ -182,6 +186,96 @@ async def update_cohort(
         "status": new_status,
         "starts_on": cohort.starts_on,
         "enrollment_count": enrollment_count,
+    }
+
+
+async def enrol_student(
+    db: AsyncSession, cohort_id: str, token: str, payload: EnrolRequest
+) -> dict:
+    # Validate invite token
+    try:
+        claims = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+    except JWTError:
+        raise unauthorized("Invalid or expired invite token.")
+    if claims.get("type") != "invite":
+        raise unauthorized("Invalid invite token.")
+    if claims.get("cohort_id") != cohort_id:
+        raise unauthorized("Token does not match this cohort.")
+    org_id: str = claims.get("org_id", "")
+
+    # Cohort must exist and be active
+    cohort_result = await db.execute(
+        select(Cohort).where(Cohort.id == cohort_id, Cohort.deleted_at.is_(None))
+    )
+    cohort = cohort_result.scalar_one_or_none()
+    if cohort is None:
+        raise not_found("Cohort")
+    cohort_status = cohort.status.value if isinstance(cohort.status, CohortStatus) else str(cohort.status)
+    if cohort_status != CohortStatus.active.value:
+        raise forbidden("Cohort is not accepting enrolments.")
+
+    email = (payload.email or "").strip().lower()
+    if not email:
+        raise bad_request("email is required.")
+
+    # Look up existing user (same org + email)
+    user_result = await db.execute(
+        select(User).where(
+            User.email == email,
+            User.organization_id == org_id,
+            User.deleted_at.is_(None),
+        )
+    )
+    user = user_result.scalar_one_or_none()
+
+    if user is None:
+        # New user — require name + password
+        if not payload.display_name:
+            raise bad_request("display_name is required for new users.")
+        if not payload.password:
+            raise bad_request("password is required for new users.")
+
+        user = User(
+            id=uuid7_str(),
+            organization_id=org_id,
+            email=email,
+            display_name=payload.display_name.strip(),
+            auth_provider=UserAuthProvider.local,
+            password_hash=hash_password(payload.password),
+            global_role=UserGlobalRole.learner,
+            status=UserStatus.active,
+        )
+        db.add(user)
+        await db.flush()
+
+    # Check not already enrolled
+    existing_result = await db.execute(
+        select(Enrolment).where(
+            Enrolment.cohort_id == cohort_id,
+            Enrolment.user_id == user.id,
+            Enrolment.deleted_at.is_(None),
+        )
+    )
+    existing_enrolment = existing_result.scalar_one_or_none()
+    if existing_enrolment is not None:
+        raise conflict("Already enrolled in this cohort.", type_="already_enrolled")
+
+    enrolment = Enrolment(
+        id=uuid7_str(),
+        cohort_id=cohort_id,
+        user_id=user.id,
+        role=EnrolmentRole.learner,
+        status=EnrolmentStatus.active,
+    )
+    db.add(enrolment)
+    await db.flush()
+
+    access_token, expires_in = create_access_token(user.id, user.organization_id, user.global_role.value)
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_in": expires_in,
+        "enrolment_id": enrolment.id,
     }
 
 
