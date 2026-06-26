@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getCohorts, createCohort, getMe, ApiClientError } from "@/lib/api-client";
-import type { CohortSummary, Me } from "@/lib/api-types";
+import type { CohortSummary, CohortDetail, Me } from "@/lib/api-types";
 import { AppShell } from "@/components/layout/AppShell";
 
 function StatusBadge({ status }: { status: string }) {
@@ -24,7 +24,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function CreateCohortForm({ onCreated, onCancel }: { onCreated: (c: CohortSummary) => void; onCancel: () => void }) {
+function CreateCohortForm({ onCreated, onCancel }: { onCreated: (c: CohortDetail) => void; onCancel: () => void }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -138,8 +138,14 @@ export default function FacilitatorCohortsPage() {
     load();
   }, [router]);
 
-  function handleCohortCreated(newCohort: CohortSummary) {
-    setCohorts((prev) => [newCohort, ...prev]);
+  function handleCohortCreated(newCohort: CohortDetail) {
+    const summary: CohortSummary = {
+      id: newCohort.id,
+      name: newCohort.name,
+      status: newCohort.status,
+      learner_count: newCohort.enrollment_count,
+    };
+    setCohorts((prev) => [summary, ...prev]);
     setShowCreateForm(false);
   }
 

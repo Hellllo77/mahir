@@ -165,10 +165,29 @@ export interface CohortSummary {
   learner_count: number;
 }
 
+export interface CohortDetail {
+  id: string;
+  name: string;
+  description?: string | null;
+  status: string;
+  starts_on?: string | null;
+  enrollment_count: number;
+}
+
 export interface CohortCreate {
   name: string;
   description?: string;
   start_date?: string;
+}
+
+export interface CohortUpdate {
+  status?: string;
+  name?: string;
+  description?: string;
+}
+
+export interface InviteLinkResponse {
+  url: string;
 }
 
 export interface GateOverride {

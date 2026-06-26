@@ -5,7 +5,10 @@ import type {
   TokenResponse,
   Me,
   CohortSummary,
+  CohortDetail,
   CohortCreate,
+  CohortUpdate,
+  InviteLinkResponse,
   Module,
   Exercise,
   ConsolidationContent,
@@ -126,11 +129,26 @@ export async function getCohorts(): Promise<CohortSummary[]> {
   return request<CohortSummary[]>("/cohorts");
 }
 
-export async function createCohort(body: CohortCreate): Promise<CohortSummary> {
-  return request<CohortSummary>("/cohorts", {
+export async function getCohort(cohortId: string): Promise<CohortDetail> {
+  return request<CohortDetail>(`/cohorts/${cohortId}`);
+}
+
+export async function createCohort(body: CohortCreate): Promise<CohortDetail> {
+  return request<CohortDetail>("/cohorts", {
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+export async function updateCohort(cohortId: string, body: CohortUpdate): Promise<CohortDetail> {
+  return request<CohortDetail>(`/cohorts/${cohortId}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function getCohortInviteLink(cohortId: string): Promise<InviteLinkResponse> {
+  return request<InviteLinkResponse>(`/cohorts/${cohortId}/invite-link`);
 }
 
 // --- Curriculum ---
