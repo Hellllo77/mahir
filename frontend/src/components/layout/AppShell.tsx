@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { getRole } from "@/lib/api-client";
+import { getRole, saveRole, getMe } from "@/lib/api-client";
 
 interface Props {
   sidebar?: React.ReactNode;
@@ -32,8 +32,18 @@ export function AppShell({ sidebar, children, userName, isFacilitator, cohortId 
   const [showCohortsNav, setShowCohortsNav] = useState(false);
 
   useEffect(() => {
-    setLogoHref(getLogoHref());
-    setShowCohortsNav(isStaffRole());
+    if (getRole()) {
+      setLogoHref(getLogoHref());
+      setShowCohortsNav(isStaffRole());
+    } else if (typeof window !== "undefined" && localStorage.getItem("mahir_token")) {
+      // Role not cached (old session pre-saveRole) — fetch and cache it
+      getMe().then((me) => {
+        saveRole(me.global_role);
+        const isStaff = me.global_role === "org_admin" || me.global_role === "super_admin" || me.global_role === "facilitator";
+        setShowCohortsNav(isStaff);
+        setLogoHref(isStaff ? "/facilitator/cohorts" : "/dashboard");
+      }).catch(() => {/* token invalid — leave nav hidden, sign-out will redirect */});
+    }
   }, []);
 
   return (
