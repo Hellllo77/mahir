@@ -83,7 +83,7 @@ async def create_cohort(db: AsyncSession, user: User, payload: CohortCreate) -> 
     }
 
 
-async def update_cohort(db: AsyncSession, user: User, cohort_id: str, status: str) -> dict:
+async def get_cohort(db: AsyncSession, user: User, cohort_id: str) -> dict:
     if user.global_role not in _ALLOWED:
         raise forbidden("org_admin, super_admin, or facilitator role required.")
 
@@ -98,12 +98,62 @@ async def update_cohort(db: AsyncSession, user: User, cohort_id: str, status: st
     if cohort is None:
         raise not_found("Cohort not found.")
 
-    current = cohort.status if isinstance(cohort.status, str) else cohort.status.value
-    allowed_next = _ALLOWED_STATUS_TRANSITIONS.get(current, set())
-    if status not in allowed_next:
-        raise forbidden(f"Cannot transition cohort from '{current}' to '{status}'.")
+    learner_count_sq = (
+        select(func.count(Enrolment.id))
+        .where(
+            Enrolment.cohort_id == cohort.id,
+            Enrolment.status == "active",
+            Enrolment.deleted_at.is_(None),
+        )
+        .scalar_subquery()
+    )
+    count_result = await db.execute(select(learner_count_sq))
+    enrollment_count = count_result.scalar() or 0
 
-    cohort.status = status
+    return {
+        "id": cohort.id,
+        "name": cohort.name,
+        "description": cohort.description,
+        "status": cohort.status if isinstance(cohort.status, str) else cohort.status.value,
+        "starts_on": cohort.starts_on,
+        "enrollment_count": enrollment_count,
+    }
+
+
+async def update_cohort(
+    db: AsyncSession,
+    user: User,
+    cohort_id: str,
+    status: str | None,
+    name: str | None,
+    description: str | None,
+) -> dict:
+    if user.global_role not in _ALLOWED:
+        raise forbidden("org_admin, super_admin, or facilitator role required.")
+
+    result = await db.execute(
+        select(Cohort).where(
+            Cohort.id == cohort_id,
+            Cohort.organization_id == user.organization_id,
+            Cohort.deleted_at.is_(None),
+        )
+    )
+    cohort = result.scalar_one_or_none()
+    if cohort is None:
+        raise not_found("Cohort not found.")
+
+    if status is not None:
+        current = cohort.status if isinstance(cohort.status, str) else cohort.status.value
+        allowed_next = _ALLOWED_STATUS_TRANSITIONS.get(current, set())
+        if status not in allowed_next:
+            raise forbidden(f"Cannot transition cohort from '{current}' to '{status}'.")
+        cohort.status = status
+
+    if name is not None:
+        cohort.name = name
+    if description is not None:
+        cohort.description = description
+
     await db.commit()
     await db.refresh(cohort)
 

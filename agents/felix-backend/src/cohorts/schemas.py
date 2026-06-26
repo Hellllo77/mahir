@@ -27,7 +27,9 @@ class CohortDetail(BaseModel):
 
 
 class CohortUpdate(BaseModel):
-    status: str
+    status: Optional[str] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
 
 
 class InviteLink(BaseModel):

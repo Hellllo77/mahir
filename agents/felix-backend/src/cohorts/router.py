@@ -16,9 +16,14 @@ async def create_cohort(payload: schemas.CohortCreate, db: DbDep, current_user: 
     return await service.create_cohort(db, current_user, payload)
 
 
+@router.get("/cohorts/{cohort_id}", response_model=schemas.CohortDetail)
+async def get_cohort(cohort_id: str, db: DbDep, current_user: CurrentUser):
+    return await service.get_cohort(db, current_user, cohort_id)
+
+
 @router.patch("/cohorts/{cohort_id}", response_model=schemas.CohortDetail)
 async def update_cohort(cohort_id: str, payload: schemas.CohortUpdate, db: DbDep, current_user: CurrentUser):
-    return await service.update_cohort(db, current_user, cohort_id, payload.status)
+    return await service.update_cohort(db, current_user, cohort_id, payload.status, payload.name, payload.description)
 
 
 @router.get("/cohorts/{cohort_id}/invite-link", response_model=schemas.InviteLink)
