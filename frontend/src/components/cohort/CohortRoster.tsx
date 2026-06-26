@@ -221,6 +221,9 @@ function DrillDownPanel({
       <p className="text-xs text-muted" style={{ marginBottom: "var(--space-3)" }}>
         Detailed progress for {detail.display_name}
       </p>
+      {detail.exercises.length === 0 ? (
+        <p className="text-sm text-muted">No exercises started yet.</p>
+      ) : (
       <div className="stack" style={{ gap: "var(--space-3)" }}>
         {detail.exercises.map((ex) => (
           <ExerciseOverrideRow
@@ -235,6 +238,7 @@ function DrillDownPanel({
           />
         ))}
       </div>
+      )}
     </div>
   );
 }

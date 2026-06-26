@@ -209,7 +209,7 @@ export default function FacilitatorCohortPage() {
       {!loading && !error && cohort && (
         <div className="stack" style={{ maxWidth: "72rem" }}>
           <Link href="/facilitator/cohorts" className="text-sm text-muted" style={{ textDecoration: "none" }}>
-            ← Back to Cohorts
+            ← Back to Groups
           </Link>
 
           {/* Header */}
