@@ -17,7 +17,10 @@ import type {
   SubmissionDetail,
   SubmissionCreate,
   LearnerProgressSummary,
+  LearnerDetailProgress,
   GateOverride,
+  EnrolRequest,
+  EnrolResponse,
 } from "./api-types";
 
 const API_BASE =
@@ -211,4 +214,24 @@ export async function overrideGate(
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+export async function getLearnerProgress(
+  cohortId: string,
+  userId: string
+): Promise<LearnerDetailProgress> {
+  return request<LearnerDetailProgress>(
+    `/facilitator/cohorts/${cohortId}/members/${userId}/progress`
+  );
+}
+
+export async function enrolWithToken(
+  cohortId: string,
+  token: string,
+  body: EnrolRequest
+): Promise<EnrolResponse> {
+  return request<EnrolResponse>(
+    `/cohorts/${cohortId}/enrol?token=${encodeURIComponent(token)}`,
+    { method: "POST", body: JSON.stringify(body), skipAuth: true }
+  );
 }

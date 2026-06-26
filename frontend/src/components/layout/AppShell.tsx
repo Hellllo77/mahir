@@ -60,14 +60,14 @@ export function AppShell({ sidebar, children, userName, isFacilitator, cohortId 
         >
           Mahir
         </Link>
-        <span className="text-xs text-muted" style={{ marginLeft: "var(--space-1)" }}>
+        <span className="text-xs text-muted header-subtitle" style={{ marginLeft: "var(--space-1)" }}>
           Co-Worker
         </span>
 
         {showCohortsNav && (
           <nav style={{ marginLeft: "var(--space-6)" }}>
             <Link href="/facilitator/cohorts" className="text-sm text-muted" style={{ textDecoration: "none" }}>
-              Cohorts
+              Groups
             </Link>
           </nav>
         )}
@@ -75,13 +75,13 @@ export function AppShell({ sidebar, children, userName, isFacilitator, cohortId 
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "var(--space-4)" }}>
           {isFacilitator && cohortId && (
             <Link href={`/facilitator/cohorts/${cohortId}`} className="text-sm text-muted">
-              Cohort view
+              Group view
             </Link>
           )}
           {userName && (
             <span className="text-sm text-muted">{userName}</span>
           )}
-          <Link href="/logout" className="btn btn-secondary btn-sm">
+          <Link href="/logout" className="btn btn-secondary btn-sm" style={{ whiteSpace: "nowrap" }}>
             Sign out
           </Link>
         </div>

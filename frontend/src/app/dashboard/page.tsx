@@ -62,7 +62,7 @@ export default function DashboardPage() {
             No Active Course
           </h2>
           <p className="text-sm text-muted">
-            Please contact your facilitator to be enrolled in a cohort.
+            You haven&apos;t joined a group yet. Ask your teacher for an invite link to get started.
           </p>
         </div>
       </div>

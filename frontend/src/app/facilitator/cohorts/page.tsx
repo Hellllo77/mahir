@@ -43,7 +43,7 @@ function CreateCohortForm({ onCreated, onCancel }: { onCreated: (c: CohortDetail
       });
       onCreated(cohort);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create cohort.");
+      setError(err instanceof Error ? err.message : "Failed to create group.");
     } finally {
       setSubmitting(false);
     }
@@ -51,7 +51,7 @@ function CreateCohortForm({ onCreated, onCancel }: { onCreated: (c: CohortDetail
 
   return (
     <div className="card" style={{ marginTop: "var(--space-4)" }}>
-      <h2 style={{ marginBottom: "var(--space-6)" }}>New cohort</h2>
+      <h2 style={{ marginBottom: "var(--space-6)" }}>New group</h2>
       <form onSubmit={handleSubmit} className="stack">
         <div className="form-group">
           <label className="form-label" htmlFor="cohort-name">Name <span aria-hidden="true">*</span></label>
@@ -62,7 +62,7 @@ function CreateCohortForm({ onCreated, onCancel }: { onCreated: (c: CohortDetail
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            placeholder="e.g. Cohort A — Q3 2026"
+            placeholder="e.g. Group A — Q3 2026"
             disabled={submitting}
           />
         </div>
@@ -75,7 +75,7 @@ function CreateCohortForm({ onCreated, onCancel }: { onCreated: (c: CohortDetail
             className="form-input"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Brief description of this cohort"
+            placeholder="Brief description of this group"
             disabled={submitting}
           />
         </div>
@@ -102,7 +102,7 @@ function CreateCohortForm({ onCreated, onCancel }: { onCreated: (c: CohortDetail
             {submitting ? (
               <><span className="spinner" aria-hidden="true" /> Creating…</>
             ) : (
-              "Create cohort"
+              "Create group"
             )}
           </button>
         </div>
@@ -129,7 +129,7 @@ export default function FacilitatorCohortsPage() {
         if (err instanceof ApiClientError && err.status === 401) {
           router.replace("/login");
         } else {
-          setError(err instanceof Error ? err.message : "Failed to load cohorts.");
+          setError(err instanceof Error ? err.message : "Failed to load groups.");
         }
       } finally {
         setLoading(false);
@@ -154,7 +154,7 @@ export default function FacilitatorCohortsPage() {
       {loading && (
         <div className="empty-state">
           <span className="spinner" style={{ fontSize: "1.5rem" }} />
-          <p>Loading cohorts…</p>
+          <p>Loading groups…</p>
         </div>
       )}
 
@@ -164,14 +164,14 @@ export default function FacilitatorCohortsPage() {
         <div className="stack" style={{ maxWidth: "48rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "var(--space-4)", flexWrap: "wrap" }}>
             <div>
-              <h1>Cohorts</h1>
+              <h1>Groups</h1>
               <p className="text-muted" style={{ marginTop: "var(--space-2)" }}>
-                Select a cohort to view learner progress and manage gate overrides.
+                Select a group to view student progress and manage gate overrides.
               </p>
             </div>
             {!showCreateForm && (
               <button className="btn btn-primary" onClick={() => setShowCreateForm(true)}>
-                + Create cohort
+                + Create group
               </button>
             )}
           </div>
@@ -185,7 +185,7 @@ export default function FacilitatorCohortsPage() {
 
           {cohorts.length === 0 && !showCreateForm ? (
             <div className="empty-state">
-              <p>No cohorts yet.</p>
+              <p>No groups yet.</p>
             </div>
           ) : (
             <div className="stack">
@@ -211,7 +211,7 @@ export default function FacilitatorCohortsPage() {
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "var(--space-6)" }}>
                       <span className="text-sm text-muted">
-                        {cohort.learner_count} learner{cohort.learner_count !== 1 ? "s" : ""}
+                        {cohort.learner_count} student{cohort.learner_count !== 1 ? "s" : ""}
                       </span>
                       <span className="text-muted" aria-hidden="true">→</span>
                     </div>

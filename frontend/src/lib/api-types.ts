@@ -144,6 +144,7 @@ export interface SubmissionCreate {
 
 export interface LearnerExerciseSummary {
   exercise_id: string;
+  progress_id: string | null;
   phase: Phase;
   attempts_total: number;
   attempts_genuine: number;
@@ -193,6 +194,34 @@ export interface InviteLinkResponse {
 export interface GateOverride {
   action: "unlock_consolidation" | "mark_completed" | "reset_exploring";
   reason: string;
+}
+
+export interface EnrolRequest {
+  email: string;
+  display_name?: string;
+  password?: string;
+}
+
+export interface EnrolResponse {
+  access_token: string;
+  token_type: "bearer";
+  expires_in: number;
+  enrolment_id: string;
+}
+
+export interface LearnerDetailProgress {
+  user_id: string;
+  display_name: string;
+  enrolment_id: string;
+  exercises: Array<{
+    exercise_id: string;
+    progress_id: string | null;
+    phase: Phase;
+    attempts_total: number;
+    attempts_genuine: number;
+    explored: boolean;
+    latest_signal: string | null;
+  }>;
 }
 
 export interface ApiError {

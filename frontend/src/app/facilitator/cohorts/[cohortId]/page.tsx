@@ -55,7 +55,7 @@ function EditCohortForm({
       });
       onSaved(updated);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save cohort.");
+      setError(err instanceof Error ? err.message : "Failed to save group.");
     } finally {
       setSaving(false);
     }
@@ -63,7 +63,7 @@ function EditCohortForm({
 
   return (
     <div className="card" style={{ marginTop: "var(--space-4)" }}>
-      <h2 style={{ marginBottom: "var(--space-6)" }}>Edit cohort</h2>
+      <h2 style={{ marginBottom: "var(--space-6)" }}>Edit group</h2>
       <form onSubmit={handleSubmit} className="stack">
         <div className="form-group">
           <label className="form-label" htmlFor="edit-cohort-name">
@@ -142,9 +142,9 @@ export default function FacilitatorCohortPage() {
       if (err instanceof ApiClientError && err.status === 401) {
         window.location.href = "/login";
       } else if (err instanceof ApiClientError && err.status === 403) {
-        setError("You don't have facilitator access to this cohort.");
+        setError("You don't have teacher access to this group.");
       } else {
-        setError(err instanceof Error ? err.message : "Failed to load cohort.");
+        setError(err instanceof Error ? err.message : "Failed to load group.");
       }
     } finally {
       setLoading(false);
@@ -232,7 +232,7 @@ export default function FacilitatorCohortPage() {
                     onClick={handlePublish}
                     disabled={publishing}
                   >
-                    {publishing ? <><span className="spinner" aria-hidden="true" /> Publishing…</> : "Publish cohort"}
+                    {publishing ? <><span className="spinner" aria-hidden="true" /> Publishing…</> : "Publish group"}
                   </button>
                   {publishError && (
                     <span className="text-sm" style={{ color: "var(--color-error, #dc2626)" }}>{publishError}</span>
@@ -246,7 +246,7 @@ export default function FacilitatorCohortPage() {
                 </button>
               )}
               <Link href={`/cohorts/${cohortId}`} className="btn btn-secondary">
-                ← Learner view
+                ← Student view
               </Link>
             </div>
           </div>
@@ -291,7 +291,7 @@ export default function FacilitatorCohortPage() {
           {/* Roster table */}
           <div className="card" style={{ padding: "var(--space-6)", overflow: "hidden" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-6)", gap: "var(--space-4)", flexWrap: "wrap" }}>
-              <h2 style={{ margin: 0 }}>Learner roster</h2>
+              <h2 style={{ margin: 0 }}>Student roster</h2>
               {/* F-M-002: Copy invite link — always visible in roster header */}
               <button
                 className="btn btn-secondary"
@@ -304,12 +304,12 @@ export default function FacilitatorCohortPage() {
               </button>
             </div>
             {roster.length > 0 ? (
-              <CohortRoster learners={roster} exerciseTitles={exerciseTitles} />
+              <CohortRoster cohortId={cohortId} learners={roster} exerciseTitles={exerciseTitles} />
             ) : (
               <div className="empty-state">
-                <p>No learners enrolled yet.</p>
+                <p>No students enrolled yet.</p>
                 <p className="text-sm text-muted" style={{ marginTop: "var(--space-2)" }}>
-                  Share the invite link so learners can join this cohort.
+                  Share the invite link so students can join this group.
                 </p>
               </div>
             )}
@@ -339,7 +339,7 @@ export default function FacilitatorCohortPage() {
           </div>
 
           <p className="text-xs text-muted">
-            Facilitator gate overrides are available on each learner&apos;s individual exercise view.
+            Teacher gate overrides are available on each student&apos;s individual exercise view.
             All overrides are recorded for grant audit purposes.
           </p>
         </div>
