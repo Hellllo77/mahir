@@ -50,7 +50,7 @@ async def list_cohorts(db: AsyncSession, user: User) -> list[dict]:
         {
             "id": cohort.id,
             "name": cohort.name,
-            "status": cohort.status if isinstance(cohort.status, str) else cohort.status.value,
+            "status": cohort.status.value if isinstance(cohort.status, CohortStatus) else str(cohort.status),
             "learner_count": count,
         }
         for cohort, count in result.all()
@@ -77,7 +77,7 @@ async def create_cohort(db: AsyncSession, user: User, payload: CohortCreate) -> 
         "id": cohort.id,
         "name": cohort.name,
         "description": cohort.description,
-        "status": cohort.status if isinstance(cohort.status, str) else cohort.status.value,
+        "status": cohort.status.value if isinstance(cohort.status, CohortStatus) else str(cohort.status),
         "starts_on": cohort.starts_on,
         "enrollment_count": 0,
     }
@@ -114,7 +114,7 @@ async def get_cohort(db: AsyncSession, user: User, cohort_id: str) -> dict:
         "id": cohort.id,
         "name": cohort.name,
         "description": cohort.description,
-        "status": cohort.status if isinstance(cohort.status, str) else cohort.status.value,
+        "status": cohort.status.value if isinstance(cohort.status, CohortStatus) else str(cohort.status),
         "starts_on": cohort.starts_on,
         "enrollment_count": enrollment_count,
     }
@@ -142,38 +142,42 @@ async def update_cohort(
     if cohort is None:
         raise not_found("Cohort not found.")
 
+    # Query enrollment count before modifying session state
+    count_result = await db.execute(
+        select(func.count(Enrolment.id)).where(
+            Enrolment.cohort_id == cohort_id,
+            Enrolment.status == "active",
+            Enrolment.deleted_at.is_(None),
+        )
+    )
+    enrollment_count = count_result.scalar() or 0
+
+    # Use .value to get plain string — CohortStatus is str+Enum so isinstance(x, str) is True
+    # but str(x) / f"{x}" returns "CohortStatus.X" not "X"
+    new_status = cohort.status.value if isinstance(cohort.status, CohortStatus) else str(cohort.status)
     if status is not None:
-        current = cohort.status if isinstance(cohort.status, str) else cohort.status.value
+        current = new_status
         allowed_next = _ALLOWED_STATUS_TRANSITIONS.get(current, set())
         if status not in allowed_next:
             raise forbidden(f"Cannot transition cohort from '{current}' to '{status}'.")
         cohort.status = status
+        new_status = status
 
     if name is not None:
         cohort.name = name
     if description is not None:
         cohort.description = description
 
-    await db.commit()
-    await db.refresh(cohort)
-
-    learner_count_sq = (
-        select(func.count(Enrolment.id))
-        .where(
-            Enrolment.cohort_id == cohort.id,
-            Enrolment.status == "active",
-            Enrolment.deleted_at.is_(None),
-        )
-        .scalar_subquery()
-    )
-    count_result = await db.execute(select(learner_count_sq))
-    enrollment_count = count_result.scalar() or 0
+    # Flush sends the UPDATE SQL in the current transaction; get_db() commits once at route exit.
+    # Avoids the double-commit pattern (explicit commit + get_db commit) that creates a second
+    # implicit transaction via db.refresh and can cause asyncpg errors on pooled connections.
+    await db.flush()
 
     return {
         "id": cohort.id,
         "name": cohort.name,
         "description": cohort.description,
-        "status": cohort.status if isinstance(cohort.status, str) else cohort.status.value,
+        "status": new_status,
         "starts_on": cohort.starts_on,
         "enrollment_count": enrollment_count,
     }
