@@ -23,3 +23,12 @@ class CohortDetail(BaseModel):
     description: Optional[str]
     status: str
     starts_on: Optional[str]
+    enrollment_count: int = 0
+
+
+class CohortUpdate(BaseModel):
+    status: str
+
+
+class InviteLink(BaseModel):
+    url: str

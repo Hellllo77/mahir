@@ -69,6 +69,7 @@ class User(AuditMixin, Base):
 
 class CohortStatus(str, enum.Enum):
     draft = "draft"
+    active = "active"
     running = "running"
     completed = "completed"
     archived = "archived"
