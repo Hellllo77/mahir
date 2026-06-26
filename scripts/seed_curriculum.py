@@ -172,6 +172,8 @@ def seed(session: Session, dry_run: bool = False) -> None:
     if existing:
         print(f"Curriculum '{CURRICULUM_TITLE}' v{CURRICULUM_VERSION} already exists (id={existing[0]}).")
         print("Use --reseed to clear and reseed.")
+        if not dry_run:
+            backfill_cohorts(session, existing[0])
         return
 
     # Collect and sort week files
@@ -266,6 +268,22 @@ def seed(session: Session, dry_run: bool = False) -> None:
 
     session.commit()
     print(f"\nDone. {len(parsed_weeks)} modules, {total_exercises} exercises seeded.")
+
+    backfill_cohorts(session, curriculum_id)
+
+
+def backfill_cohorts(session: Session, curriculum_id: str) -> None:
+    """Link all cohorts that have no curriculum_id to the given curriculum."""
+    result = session.execute(
+        text("UPDATE cohorts SET curriculum_id = :cid WHERE curriculum_id IS NULL RETURNING id"),
+        {"cid": curriculum_id},
+    )
+    updated = result.rowcount
+    session.commit()
+    if updated:
+        print(f"Backfilled {updated} cohort(s) → curriculum {curriculum_id}.")
+    else:
+        print("No cohorts needed backfill (all already linked or no cohorts exist).")
 
 
 def clear(session: Session) -> None:

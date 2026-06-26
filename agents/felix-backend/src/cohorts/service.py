@@ -10,6 +10,7 @@ from src.db.models.auth import (
     Cohort, CohortStatus, Enrolment, EnrolmentRole, EnrolmentStatus,
     User, UserAuthProvider, UserGlobalRole, UserStatus,
 )
+from src.db.models.curriculum import Curriculum, CurriculumStatus
 from src.db.uuidv7 import uuid7_str
 from src.lib.exceptions import bad_request, conflict, forbidden, not_found, unauthorized
 from src.lib.jwt import create_access_token, hash_password
@@ -65,6 +66,14 @@ async def create_cohort(db: AsyncSession, user: User, payload: CohortCreate) -> 
     if user.global_role not in _ALLOWED:
         raise forbidden("org_admin, super_admin, or facilitator role required.")
 
+    curriculum_result = await db.execute(
+        select(Curriculum).where(
+            Curriculum.status == CurriculumStatus.published,
+            Curriculum.deleted_at.is_(None),
+        ).limit(1)
+    )
+    curriculum = curriculum_result.scalar_one_or_none()
+
     cohort = Cohort(
         id=uuid7_str(),
         organization_id=user.organization_id,
@@ -72,6 +81,7 @@ async def create_cohort(db: AsyncSession, user: User, payload: CohortCreate) -> 
         description=payload.description,
         starts_on=payload.start_date.isoformat() if payload.start_date else None,
         status=CohortStatus.draft,
+        curriculum_id=curriculum.id if curriculum else None,
     )
     db.add(cohort)
     await db.commit()
