@@ -21,6 +21,7 @@ import type {
   GateOverride,
   EnrolRequest,
   EnrolResponse,
+  AdminSettings,
 } from "./api-types";
 
 const API_BASE =
@@ -160,6 +161,10 @@ export async function getModules(cohortId: string): Promise<Module[]> {
   return request<Module[]>(`/cohorts/${cohortId}/modules`);
 }
 
+export async function getModuleExercises(cohortId: string, moduleId: string): Promise<Exercise[]> {
+  return request<Exercise[]>(`/cohorts/${cohortId}/modules/${moduleId}/exercises`);
+}
+
 export async function getExercise(exerciseId: string): Promise<Exercise> {
   return request<Exercise>(`/exercises/${exerciseId}`);
 }
@@ -225,6 +230,11 @@ export async function getLearnerProgress(
   );
 }
 
+export async function deleteCohort(cohortId: string, force = false): Promise<void> {
+  const qs = force ? "?force=true" : "";
+  return request<void>(`/cohorts/${cohortId}${qs}`, { method: "DELETE" });
+}
+
 export async function enrolWithToken(
   cohortId: string,
   token: string,
@@ -234,4 +244,17 @@ export async function enrolWithToken(
     `/cohorts/${cohortId}/enrol?token=${encodeURIComponent(token)}`,
     { method: "POST", body: JSON.stringify(body), skipAuth: true }
   );
+}
+
+// --- Admin ---
+
+export async function getAdminSettings(): Promise<AdminSettings> {
+  return request<AdminSettings>("/admin/settings");
+}
+
+export async function updateAdminSettings(body: Partial<AdminSettings>): Promise<AdminSettings> {
+  return request<AdminSettings>("/admin/settings", {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
 }

@@ -289,7 +289,7 @@ export default function ExercisePage() {
                     Submit attempt #{(progress?.attempts_total ?? 0) + 1}
                   </h3>
                   <AgentBuilder
-                    exerciseId={exerciseId}
+                    exercise={exercise}
                     onSubmit={handleSubmit}
                     submitting={submitting}
                   />

@@ -229,3 +229,7 @@ export interface ApiError {
   message: string;
   details?: Record<string, unknown>;
 }
+
+export interface AdminSettings {
+  resend_api_key: string | null;
+}
