@@ -59,10 +59,15 @@ export default function AdminSettingsPage() {
     setSaving(true);
     try {
       const updated = await updateAdminSettings({ resend_api_key: draftKey.trim() });
-      setSettings(updated);
+      if (updated != null) {
+        setSettings(updated);
+      } else {
+        // PUT returned 204 or non-JSON 200 — re-fetch to stay current
+        try { setSettings(await getAdminSettings()); } catch { /* best-effort */ }
+      }
       setEditing(false);
       setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      setTimeout(() => setSaveSuccess(false), 5000);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save.");
     } finally {
@@ -80,6 +85,27 @@ export default function AdminSettingsPage() {
       )}
 
       {error && <div className="alert alert-error">{error}</div>}
+
+      {saveSuccess && (
+        <div
+          style={{
+            position: "fixed",
+            top: "1.25rem",
+            right: "1.25rem",
+            background: "#d1fae5",
+            border: "1.5px solid #065f46",
+            borderRadius: "8px",
+            padding: "12px 20px",
+            color: "#065f46",
+            fontWeight: 600,
+            fontSize: "14px",
+            zIndex: 1000,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+          }}
+        >
+          ✓ Settings saved
+        </div>
+      )}
 
       {!loading && !error && settings && (
         <div className="stack" style={{ maxWidth: "36rem" }}>
@@ -103,11 +129,6 @@ export default function AdminSettingsPage() {
                     </span>
                   ) : (
                     <span className="text-sm text-muted">Not configured — magic-link emails are disabled.</span>
-                  )}
-                  {saveSuccess && (
-                    <span style={{ fontSize: "var(--font-size-sm)", color: "#065f46", fontWeight: "var(--font-weight-medium)" }}>
-                      ✓ Settings saved
-                    </span>
                   )}
                 </div>
               </div>

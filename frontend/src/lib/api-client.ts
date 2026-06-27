@@ -110,6 +110,8 @@ async function request<T>(
   }
 
   if (res.status === 204) return undefined as T;
+  const ct = res.headers.get("content-type") ?? "";
+  if (!ct.includes("application/json")) return undefined as T;
   return res.json() as Promise<T>;
 }
 
