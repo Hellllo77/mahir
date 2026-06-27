@@ -41,6 +41,8 @@ def run_evaluation(submission_id: str) -> None:
 
 
 async def _evaluate_async(submission_id: str) -> None:
+    from src.db.base import engine
+    await engine.dispose()  # asyncpg pools are loop-bound; dispose before each RQ job so new connections bind to this loop
     async with AsyncSessionLocal() as db:
         try:
             await _pipeline(db, submission_id)
