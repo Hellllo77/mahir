@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
 import type { Exercise, SubmissionCreate } from "@/lib/api-types";
 
 interface Props {
@@ -56,9 +57,10 @@ export function AgentBuilder({ exercise, moduleExercises, onSubmit, submitting }
             {ex.title}
           </span>
 
-          {/* Beat prompt as context */}
+          {/* Beat prompt as context — rendered via ReactMarkdown to avoid raw ** or > */}
           {ex.prompt_markdown && (
             <div
+              className="prose"
               style={{
                 background: "var(--color-bg-surface-raised)",
                 border: "1px solid var(--color-border)",
@@ -66,11 +68,9 @@ export function AgentBuilder({ exercise, moduleExercises, onSubmit, submitting }
                 padding: "var(--space-4)",
                 fontSize: "var(--font-size-sm)",
                 color: "var(--color-text-secondary)",
-                lineHeight: "var(--line-height-relaxed)",
-                whiteSpace: "pre-wrap",
               }}
             >
-              {ex.prompt_markdown}
+              <ReactMarkdown>{ex.prompt_markdown}</ReactMarkdown>
             </div>
           )}
 
