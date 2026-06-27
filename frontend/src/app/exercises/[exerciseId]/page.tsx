@@ -213,6 +213,12 @@ export default function ExercisePage() {
     )
   );
 
+  const sortedModuleExercises = moduleExercises.slice().sort((a, b) => a.sequence_index - b.sequence_index);
+  const currentBeatIdx = sortedModuleExercises.findIndex((e) => e.id === exerciseId);
+  const nextExercise = currentBeatIdx >= 0 && currentBeatIdx < sortedModuleExercises.length - 1
+    ? sortedModuleExercises[currentBeatIdx + 1]
+    : null;
+
   const sidebar = modules.length > 0 ? (
     <ModuleNav
       cohortId={activeEnrolment?.cohort_id ?? ""}
@@ -369,7 +375,7 @@ export default function ExercisePage() {
                 <EvaluatorResult result={latestSubDetail.result} />
               )}
 
-              {/* FEATURE-9: What next? — post-eval exit paths */}
+              {/* Post-eval exit paths */}
               {latestSubDetail?.status === "evaluated" && (
                 <div className="cluster" style={{ gap: "var(--space-3)", flexWrap: "wrap" }}>
                   {activeEnrolment && (
@@ -388,6 +394,15 @@ export default function ExercisePage() {
                     >
                       Try another approach
                     </button>
+                  )}
+                  {nextExercise && (
+                    <a
+                      href={`/exercises/${nextExercise.id}`}
+                      className="btn btn-primary"
+                      style={{ textDecoration: "none" }}
+                    >
+                      Next beat →
+                    </a>
                   )}
                 </div>
               )}
