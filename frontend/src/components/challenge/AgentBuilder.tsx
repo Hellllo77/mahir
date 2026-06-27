@@ -52,6 +52,7 @@ export function AgentBuilder({ exercise, moduleExercises, onSubmit, submitting }
               background: "var(--color-brand-primary)",
               color: "var(--color-text-inverse)",
               alignSelf: "flex-start",
+              cursor: "default",
             }}
           >
             {ex.title}

@@ -29,10 +29,10 @@
 
   /* === Semantic — Phase states === */
   --color-phase-not-started-bg: #f1f5f9;
-  --color-phase-not-started-text: #64748b;
-  --color-phase-exploring-bg: #fef3c7;
+  --color-phase-not-started-text: #475569;
+  --color-phase-exploring-bg: #fde68a;
   --color-phase-exploring-text: #92400e;
-  --color-phase-exploring-border: #fbbf24;
+  --color-phase-exploring-border: #fde68a;
   --color-phase-unlocked-bg: #d1fae5;
   --color-phase-unlocked-text: #065f46;
   --color-phase-unlocked-border: #34d399;

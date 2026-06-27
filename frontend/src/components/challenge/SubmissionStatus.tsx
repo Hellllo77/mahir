@@ -1,10 +1,13 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import type { SubmissionStatus as TStatus } from "@/lib/api-types";
 
 interface Props {
   status: TStatus;
   attemptNumber: number;
+  cohortId?: string;
 }
 
 const STATUS_ICON: Record<TStatus, string> = {
@@ -15,10 +18,10 @@ const STATUS_ICON: Record<TStatus, string> = {
 };
 
 const STATUS_LABEL: Record<TStatus, string> = {
-  queued: "Queued for evaluation",
-  running: "Evaluating your agent…",
-  evaluated: "Evaluation complete",
-  failed: "Evaluation failed",
+  queued: "Queued for review",
+  running: "Reviewing your response…",
+  evaluated: "Review complete",
+  failed: "Review failed",
 };
 
 const STATUS_CLASS: Record<TStatus, string> = {
@@ -28,8 +31,18 @@ const STATUS_CLASS: Record<TStatus, string> = {
   failed: "alert alert-error",
 };
 
-export function SubmissionStatus({ status, attemptNumber }: Props) {
+export function SubmissionStatus({ status, attemptNumber, cohortId }: Props) {
   const isActive = status === "queued" || status === "running";
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!isActive) {
+      setElapsed(0);
+      return;
+    }
+    const interval = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(interval);
+  }, [isActive]);
 
   return (
     <div className={STATUS_CLASS[status]}>
@@ -41,12 +54,25 @@ export function SubmissionStatus({ status, attemptNumber }: Props) {
         {isActive && (
           <div className="text-xs" style={{ marginTop: "var(--space-1)", opacity: 0.8 }}>
             <span className="spinner" style={{ marginRight: "var(--space-2)" }} />
-            Your agent is being run against test scenarios and scored by the LLM judge. This may take a moment.
+            {elapsed < 15
+              ? "Your response is being reviewed. This may take a moment."
+              : "Still evaluating — this usually takes under a minute. Don't close this tab."}
+          </div>
+        )}
+        {isActive && elapsed >= 60 && cohortId && (
+          <div style={{ marginTop: "var(--space-2)" }}>
+            <Link
+              href={`/cohorts/${cohortId}`}
+              className="text-xs"
+              style={{ color: "inherit", textDecoration: "underline" }}
+            >
+              Check back later →
+            </Link>
           </div>
         )}
         {status === "failed" && (
           <div className="text-xs" style={{ marginTop: "var(--space-1)" }}>
-            The evaluation infrastructure encountered an error (not your agent). You can resubmit.
+            The automated reviewer encountered an error (not your response). You can resubmit.
           </div>
         )}
       </div>

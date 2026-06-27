@@ -54,6 +54,7 @@ export default function ExercisePage() {
   const [latestSubId, setLatestSubId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"challenge" | "consolidation">("challenge");
+  const [attemptKey, setAttemptKey] = useState(0);
 
   const { data: latestSubDetail } = useSubmission(latestSubId);
 
@@ -199,7 +200,10 @@ export default function ExercisePage() {
         ...m,
         exercises: m.exercises?.map((e) => ({
           ...e,
-          phase: progressByExercise[e.id]?.phase ?? "not_started",
+          // BUG-2: always use live progress.phase for the current exercise
+          phase: e.id === exerciseId && progress
+            ? progress.phase
+            : (progressByExercise[e.id]?.phase ?? "not_started"),
         })),
       }))}
     />
@@ -313,20 +317,61 @@ export default function ExercisePage() {
                 </details>
               )}
 
-              {/* PF gate progress */}
-              {progress && progress.gate && <PFGateProgress progress={progress} />}
+              {/* FEATURE-4: Exploration requirements — collapsed by default, visible before first submit */}
+              {(progress?.gate ?? exercise.gate) && (
+                <details>
+                  <summary style={{ cursor: "pointer", fontSize: "var(--font-size-sm)", fontWeight: "var(--font-weight-medium)", padding: "var(--space-2) 0" }}>
+                    Exploration requirements
+                  </summary>
+                  <div style={{ marginTop: "var(--space-2)" }}>
+                    <PFGateProgress
+                      progress={progress}
+                      gateConfig={exercise.gate}
+                      pendingSubmission={
+                        latestSubId !== null &&
+                        latestSubDetail?.status !== "evaluated" &&
+                        latestSubDetail?.status !== "failed"
+                      }
+                    />
+                  </div>
+                </details>
+              )}
 
               {/* Latest submission status */}
               {latestSubId && latestSubDetail && (
                 <SubmissionStatus
                   status={latestSubDetail.status}
                   attemptNumber={latestSubDetail.attempt_number}
+                  cohortId={activeEnrolment?.cohort_id}
                 />
               )}
 
               {/* Latest evaluation result */}
               {latestSubDetail?.status === "evaluated" && latestSubDetail.result && (
                 <EvaluatorResult result={latestSubDetail.result} />
+              )}
+
+              {/* FEATURE-9: What next? — post-eval exit paths */}
+              {latestSubDetail?.status === "evaluated" && (
+                <div className="cluster" style={{ gap: "var(--space-3)", flexWrap: "wrap" }}>
+                  {activeEnrolment && (
+                    <a
+                      href={`/cohorts/${activeEnrolment.cohort_id}`}
+                      className="btn btn-secondary"
+                      style={{ textDecoration: "none" }}
+                    >
+                      ← Back to learning path
+                    </a>
+                  )}
+                  {progress?.phase !== "completed" && (
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => { setLatestSubId(null); setAttemptKey((k) => k + 1); }}
+                    >
+                      Try another approach
+                    </button>
+                  )}
+                </div>
               )}
 
               {/* Co-Worker Notes — Option B: facilitator-only panel */}
@@ -356,6 +401,7 @@ export default function ExercisePage() {
                     Submit attempt #{(progress?.attempts_total ?? 0) + 1}
                   </h3>
                   <AgentBuilder
+                    key={attemptKey}
                     exercise={exercise}
                     moduleExercises={moduleExercises}
                     onSubmit={handleSubmit}
