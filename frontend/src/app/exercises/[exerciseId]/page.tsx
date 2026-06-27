@@ -202,6 +202,11 @@ export default function ExercisePage() {
   const consolidationUnlocked =
     progress?.phase === "consolidation_unlocked" || progress?.phase === "completed";
 
+  const isSubmissionPending =
+    latestSubId !== null &&
+    latestSubDetail?.status !== "evaluated" &&
+    latestSubDetail?.status !== "failed";
+
   const progressByExercise = Object.fromEntries(
     modules.flatMap((m) =>
       (m.exercises ?? []).map((e) => [e.id, { ...e, phase: e.phase ?? "not_started" }])
@@ -221,6 +226,7 @@ export default function ExercisePage() {
             : (progressByExercise[e.id]?.phase ?? "not_started"),
         })),
       }))}
+      pendingExerciseId={isSubmissionPending ? exerciseId : undefined}
     />
   ) : undefined;
 
@@ -333,9 +339,9 @@ export default function ExercisePage() {
                 </details>
               )}
 
-              {/* FEATURE-4: Exploration requirements — collapsed by default, visible before first submit */}
+              {/* Exploration requirements — open by default */}
               {(progress?.gate ?? exercise.gate) && (
-                <details>
+                <details open>
                   <summary style={{ cursor: "pointer", fontSize: "var(--font-size-sm)", fontWeight: "var(--font-weight-medium)", padding: "var(--space-2) 0" }}>
                     Exploration requirements
                   </summary>
@@ -343,11 +349,7 @@ export default function ExercisePage() {
                     <PFGateProgress
                       progress={progress}
                       gateConfig={exercise.gate}
-                      pendingSubmission={
-                        latestSubId !== null &&
-                        latestSubDetail?.status !== "evaluated" &&
-                        latestSubDetail?.status !== "failed"
-                      }
+                      pendingSubmission={isSubmissionPending}
                     />
                   </div>
                 </details>
@@ -422,6 +424,8 @@ export default function ExercisePage() {
                     moduleExercises={moduleExercises}
                     onSubmit={handleSubmit}
                     submitting={submitting}
+                    submissionPending={isSubmissionPending}
+                    hasSubmission={latestSubId !== null}
                   />
                 </div>
               )}

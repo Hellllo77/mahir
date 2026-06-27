@@ -115,6 +115,7 @@ def _prefilter(transcript_bundle: str, submission_payload: dict) -> tuple[bool, 
     resp = client.messages.create(
         model=_settings.judge_model_prefilter,
         max_tokens=128,
+        timeout=30.0,
         system=(
             "You are a classifier. Respond ONLY with 'GENUINE' or 'NOT_GENUINE', "
             "followed by a colon and one short reason (≤15 words)."
@@ -155,6 +156,7 @@ def _run_judge(
     resp = client.messages.parse(
         model=model,
         max_tokens=8192,
+        timeout=30.0,
         thinking={"type": "adaptive"},
         system=[
             {

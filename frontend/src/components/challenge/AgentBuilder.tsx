@@ -9,9 +9,11 @@ interface Props {
   moduleExercises: Exercise[];
   onSubmit: (body: SubmissionCreate, idempotencyKey: string) => Promise<void>;
   submitting: boolean;
+  submissionPending?: boolean;
+  hasSubmission?: boolean;
 }
 
-export function AgentBuilder({ exercise, moduleExercises, onSubmit, submitting }: Props) {
+export function AgentBuilder({ exercise, moduleExercises, onSubmit, submitting, submissionPending, hasSubmission }: Props) {
   // Use module exercises sorted by sequence_index; fall back to single exercise
   const beats = (moduleExercises.length > 0 ? moduleExercises : [exercise])
     .slice()
@@ -102,7 +104,7 @@ export function AgentBuilder({ exercise, moduleExercises, onSubmit, submitting }
         <button
           type="submit"
           className="btn btn-primary btn-lg"
-          disabled={submitting || !allFilled}
+          disabled={submitting || (submissionPending ?? false) || !allFilled}
         >
           {submitting ? (
             <>
@@ -115,10 +117,12 @@ export function AgentBuilder({ exercise, moduleExercises, onSubmit, submitting }
         </button>
       </div>
 
-      <p className="text-xs text-muted">
-        Fill in all {beats.length} beat{beats.length !== 1 ? "s" : ""} before submitting.
-        Results appear below when ready.
-      </p>
+      {!hasSubmission && (
+        <p className="text-xs text-muted">
+          Fill in all {beats.length} beat{beats.length !== 1 ? "s" : ""} before submitting.
+          Results appear below when ready.
+        </p>
+      )}
     </form>
   );
 }

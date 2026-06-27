@@ -8,9 +8,10 @@ import { PhaseTag } from "@/components/ui/PhaseTag";
 interface Props {
   cohortId: string;
   modules: Module[];
+  pendingExerciseId?: string;
 }
 
-export function ModuleNav({ cohortId, modules }: Props) {
+export function ModuleNav({ cohortId, modules, pendingExerciseId }: Props) {
   const pathname = usePathname();
 
   return (
@@ -73,8 +74,20 @@ export function ModuleNav({ cohortId, modules }: Props) {
                           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             Beat {ex.sequence_index}
                           </span>
-                          {ex.phase && (
-                            <PhaseTag phase={ex.phase} />
+                          {ex.id === pendingExerciseId ? (
+                            <span
+                              className="badge"
+                              style={{
+                                background: "var(--color-warning-bg, #fffbeb)",
+                                color: "var(--color-warning, #d97706)",
+                              }}
+                            >
+                              Submitted
+                            </span>
+                          ) : (
+                            ex.phase && ex.phase !== "not_started" && (
+                              <PhaseTag phase={ex.phase} />
+                            )
                           )}
                         </Link>
                       </li>

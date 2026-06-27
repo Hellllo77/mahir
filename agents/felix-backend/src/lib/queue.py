@@ -28,5 +28,5 @@ def enqueue_evaluation(submission_id: str, priority: str = "interactive") -> str
 
     queue_name = "evaluation_batch" if priority == "batch" else "evaluation"
     q = Queue(queue_name, connection=get_redis())
-    job = q.enqueue(run_evaluation, submission_id, job_timeout=600)
+    job = q.enqueue(run_evaluation, submission_id, job_timeout=120)
     return job.id

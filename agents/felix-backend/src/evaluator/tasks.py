@@ -14,6 +14,27 @@ from src.progress.service import recompute_progress_after_evaluation
 log = logging.getLogger(__name__)
 
 
+async def reset_stuck_running_submissions() -> int:
+    """On worker startup: flip any submission stuck in 'running' for >5 min to 'failed'.
+
+    Guards against submissions orphaned when a previous worker process died mid-job.
+    Returns the number of rows updated.
+    """
+    from sqlalchemy import text
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            text(
+                "UPDATE submissions SET status = 'failed', updated_at = NOW() "
+                "WHERE status = 'running' AND updated_at < NOW() - INTERVAL '5 minutes'"
+            )
+        )
+        await db.commit()
+        count = result.rowcount
+        if count:
+            log.warning("reset_stuck_running_submissions: reset %d stuck submission(s) to failed", count)
+        return count
+
+
 def run_evaluation(submission_id: str) -> None:
     """RQ entry point — runs in a worker process via asyncio.run()."""
     asyncio.run(_evaluate_async(submission_id))
