@@ -269,8 +269,8 @@ export default function ExercisePage() {
                 </div>
               </div>
 
-              {/* Build spec */}
-              {Object.keys(exercise.build_spec).length > 0 && (
+              {/* Build spec — facilitator/admin only */}
+              {isFacilitator && Object.keys(exercise.build_spec).length > 0 && (
                 <details className="card">
                   <summary style={{ cursor: "pointer", fontWeight: "var(--font-weight-medium)", fontSize: "var(--font-size-sm)" }}>
                     Build specification
