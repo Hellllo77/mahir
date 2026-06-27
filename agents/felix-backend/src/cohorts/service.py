@@ -326,7 +326,6 @@ async def _get_resend_api_key(db: AsyncSession, org_id: str) -> str | None:
     result = await db.execute(
         select(OrganisationSettings).where(
             OrganisationSettings.org_id == org_id,
-            OrganisationSettings.deleted_at.is_(None),
         )
     )
     settings_row = result.scalar_one_or_none()
