@@ -13,5 +13,6 @@ COPY alembic.ini .
 COPY alembic/ ./alembic/
 COPY src/ ./src/
 COPY scripts/ ./scripts/
+COPY curriculum_data/ ./curriculum_data/
 
 CMD ["sh", "-c", "alembic upgrade head && uvicorn src.main:app --host 0.0.0.0 --port 8000"]

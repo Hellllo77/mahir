@@ -20,7 +20,9 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
 WORKSPACE = Path(__file__).parent.parent
-SOURCE_DIR = WORKSPACE / "curriculum-trainer" / "projects" / "teen-program"
+_PRIMARY_SOURCE = WORKSPACE / "curriculum-trainer" / "projects" / "teen-program"
+_BUNDLED_SOURCE = WORKSPACE / "curriculum_data" / "teen-program"
+SOURCE_DIR = _PRIMARY_SOURCE if _PRIMARY_SOURCE.exists() else _BUNDLED_SOURCE
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL_SYNC", "postgresql://mahir:mahir@127.0.0.1:5435/mahir"
@@ -297,6 +299,11 @@ def clear(session: Session) -> None:
         return
     curriculum_id = result[0]
 
+    # NULL out cohort FK references first (cohorts.curriculum_id → curricula.id)
+    session.execute(
+        text("UPDATE cohorts SET curriculum_id = NULL WHERE curriculum_id = :cid"),
+        {"cid": curriculum_id},
+    )
     # Cascade: exercises → modules → curriculum
     session.execute(
         text("""
