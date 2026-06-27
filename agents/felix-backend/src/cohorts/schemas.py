@@ -36,6 +36,16 @@ class InviteLink(BaseModel):
     url: str
 
 
+class InviteSendRequest(BaseModel):
+    emails: list[str]
+
+
+class InviteSendResult(BaseModel):
+    sent: int
+    failed: int
+    reason: Optional[str] = None
+
+
 class EnrolRequest(BaseModel):
     email: str
     display_name: Optional[str] = None

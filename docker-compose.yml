@@ -48,6 +48,7 @@ services:
         required: false
     volumes:
       - ./agents/felix-backend/src:/app/src
+      - ./agents/felix-backend/alembic:/app/alembic
     depends_on:
       postgres:
         condition: service_healthy

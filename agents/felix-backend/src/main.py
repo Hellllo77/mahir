@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.admin.router import router as admin_router
 from src.auth.router import me_router, router as auth_router
 from src.cohorts.router import router as cohorts_router
 from src.config import settings
@@ -42,6 +43,7 @@ async def healthz():
 
 v1 = FastAPI(title="Mahir API v1")
 
+v1.include_router(admin_router)
 v1.include_router(auth_router)
 v1.include_router(me_router)
 v1.include_router(cohorts_router)

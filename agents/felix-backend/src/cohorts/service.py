@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
@@ -6,11 +7,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.cohorts.schemas import CohortCreate, EnrolRequest
 from src.config import settings
+from src.db.models.admin import OrganisationSettings
 from src.db.models.auth import (
     Cohort, CohortStatus, Enrolment, EnrolmentRole, EnrolmentStatus,
     User, UserAuthProvider, UserGlobalRole, UserStatus,
 )
 from src.db.models.curriculum import Curriculum, CurriculumStatus
+from src.lib.email import mask_api_key, send_invite_email
+
+logger = logging.getLogger(__name__)
 from src.db.uuidv7 import uuid7_str
 from src.lib.exceptions import bad_request, conflict, forbidden, not_found, unauthorized
 from src.lib.jwt import create_access_token, hash_password
@@ -184,10 +189,11 @@ async def update_cohort(
     if description is not None:
         cohort.description = description
 
-    # Flush sends the UPDATE SQL in the current transaction; get_db() commits once at route exit.
-    # Avoids the double-commit pattern (explicit commit + get_db commit) that creates a second
-    # implicit transaction via db.refresh and can cause asyncpg errors on pooled connections.
     await db.flush()
+
+    # On transition to active: auto-send invite emails to all enrolled students (graceful failure)
+    if status == CohortStatus.active.value:
+        await _send_cohort_invites(db, cohort, user.organization_id)
 
     return {
         "id": cohort.id,
@@ -314,3 +320,145 @@ async def get_invite_link(db: AsyncSession, user: User, cohort_id: str) -> dict:
     frontend_url = settings.frontend_url.rstrip("/")
     url = f"{frontend_url}/cohorts/{cohort_id}/join?token={token}"
     return {"url": url}
+
+
+async def _get_resend_api_key(db: AsyncSession, org_id: str) -> str | None:
+    result = await db.execute(
+        select(OrganisationSettings).where(
+            OrganisationSettings.org_id == org_id,
+            OrganisationSettings.deleted_at.is_(None),
+        )
+    )
+    settings_row = result.scalar_one_or_none()
+    return settings_row.resend_api_key if settings_row else None
+
+
+def _make_invite_url(cohort_id: str, org_id: str) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(days=7)
+    token = jwt.encode(
+        {"cohort_id": cohort_id, "org_id": org_id, "type": "invite", "exp": expire},
+        settings.jwt_secret_key,
+        algorithm=settings.jwt_algorithm,
+    )
+    frontend_url = settings.frontend_url.rstrip("/")
+    return f"{frontend_url}/cohorts/{cohort_id}/join?token={token}"
+
+
+async def _send_cohort_invites(db: AsyncSession, cohort: Cohort, org_id: str) -> None:
+    """Send invite emails to all enrolled students. Logs warnings, never raises."""
+    api_key = await _get_resend_api_key(db, org_id)
+    if not api_key:
+        logger.warning("No Resend API key configured for org %s — invite emails not sent.", org_id)
+        return
+
+    enrolments_result = await db.execute(
+        select(Enrolment).where(
+            Enrolment.cohort_id == cohort.id,
+            Enrolment.deleted_at.is_(None),
+        )
+    )
+    enrolments = enrolments_result.scalars().all()
+    if not enrolments:
+        return
+
+    invite_url = _make_invite_url(cohort.id, org_id)
+    sent = 0
+    for enrolment in enrolments:
+        user_result = await db.execute(select(User).where(User.id == enrolment.user_id))
+        student = user_result.scalar_one_or_none()
+        if student and student.email:
+            ok = send_invite_email(api_key, student.email, cohort.name, invite_url)
+            if ok:
+                sent += 1
+
+    logger.info("Sent %d/%d invite emails for cohort %s.", sent, len(enrolments), cohort.id)
+
+
+async def send_invites_manual(
+    db: AsyncSession, cohort_id: str, emails: list[str], user: User
+) -> dict:
+    """POST /cohorts/{id}/invite/send — send invite to specific email addresses."""
+    if user.global_role not in _ALLOWED:
+        raise forbidden("org_admin, super_admin, or facilitator role required.")
+
+    result = await db.execute(
+        select(Cohort).where(
+            Cohort.id == cohort_id,
+            Cohort.organization_id == user.organization_id,
+            Cohort.deleted_at.is_(None),
+        )
+    )
+    cohort = result.scalar_one_or_none()
+    if cohort is None:
+        raise not_found("Cohort not found.")
+
+    api_key = await _get_resend_api_key(db, user.organization_id)
+    if not api_key:
+        logger.warning("No Resend API key configured for org %s.", user.organization_id)
+        return {"sent": 0, "failed": len(emails), "reason": "No Resend API key configured."}
+
+    invite_url = _make_invite_url(cohort_id, user.organization_id)
+    sent, failed = 0, 0
+    for email in emails:
+        ok = send_invite_email(api_key, email, cohort.name, invite_url)
+        if ok:
+            sent += 1
+        else:
+            failed += 1
+
+    return {"sent": sent, "failed": failed}
+
+
+async def delete_cohort(
+    db: AsyncSession, cohort_id: str, user: User, force: bool = False
+) -> None:
+    """Hard delete — super_admin only. Cascades enrolments + progress."""
+    if user.global_role != UserGlobalRole.super_admin:
+        raise forbidden("super_admin role required to delete cohorts.")
+
+    result = await db.execute(
+        select(Cohort).where(
+            Cohort.id == cohort_id,
+            Cohort.organization_id == user.organization_id,
+            Cohort.deleted_at.is_(None),
+        )
+    )
+    cohort = result.scalar_one_or_none()
+    if cohort is None:
+        raise not_found("Cohort not found.")
+
+    # Guard: active enrolled students
+    if not force:
+        active_count_result = await db.execute(
+            select(func.count(Enrolment.id)).where(
+                Enrolment.cohort_id == cohort_id,
+                Enrolment.status == EnrolmentStatus.active.value,
+                Enrolment.deleted_at.is_(None),
+            )
+        )
+        active_count = active_count_result.scalar() or 0
+        if active_count > 0:
+            raise conflict(f"Cohort has {active_count} active student(s). Use ?force=true to delete anyway.")
+
+    # Cascade: progress records → enrolments → cohort
+    from src.db.models.progress import ExerciseProgress
+    enrolment_ids_result = await db.execute(
+        select(Enrolment.id).where(Enrolment.cohort_id == cohort_id)
+    )
+    enrolment_ids = [row[0] for row in enrolment_ids_result.all()]
+
+    if enrolment_ids:
+        for eid in enrolment_ids:
+            await db.execute(
+                select(ExerciseProgress).where(ExerciseProgress.enrolment_id == eid)
+            )
+        from sqlalchemy import delete as sa_delete
+        await db.execute(
+            sa_delete(ExerciseProgress).where(ExerciseProgress.enrolment_id.in_(enrolment_ids))
+        )
+        await db.execute(
+            sa_delete(Enrolment).where(Enrolment.cohort_id == cohort_id)
+        )
+
+    await db.delete(cohort)
+    await db.flush()

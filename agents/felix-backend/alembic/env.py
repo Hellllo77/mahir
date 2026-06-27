@@ -14,6 +14,7 @@ import src.db.models.auth  # noqa: F401
 import src.db.models.curriculum  # noqa: F401
 import src.db.models.progress  # noqa: F401
 import src.db.models.submission  # noqa: F401
+import src.db.models.admin  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)
