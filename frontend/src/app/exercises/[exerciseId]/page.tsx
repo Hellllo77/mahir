@@ -36,6 +36,9 @@ import { SubmissionStatus } from "@/components/challenge/SubmissionStatus";
 import { useSubmission } from "@/lib/hooks/useSubmission";
 import { EvaluatorResult } from "@/components/evaluation/EvaluatorResult";
 
+// Explicit staff role gate — single source of truth for build_spec + facilitator UI
+const STAFF_ROLES = new Set<string>(["facilitator", "org_admin", "super_admin"]);
+
 export default function ExercisePage() {
   const { exerciseId } = useParams<{ exerciseId: string }>();
 
@@ -55,6 +58,8 @@ export default function ExercisePage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"challenge" | "consolidation">("challenge");
   const [attemptKey, setAttemptKey] = useState(0);
+  // Incremented by pageshow handler to re-trigger submissions fetch on bfcache restore
+  const [subsFetchCount, setSubsFetchCount] = useState(0);
 
   const { data: latestSubDetail } = useSubmission(latestSubId);
 
@@ -124,9 +129,12 @@ export default function ExercisePage() {
     load();
   }, [exerciseId]);
 
-  // Dedicated submissions fetch — runs on every mount so history persists across navigation
+  // Submissions fetch — re-runs when exerciseId changes (sidebar nav) or bfcache restores page.
+  // State is cleared immediately so stale history from a prior exercise never bleeds through.
   useEffect(() => {
     let cancelled = false;
+    setSubmissions([]);
+    setSubmissionDetails({});
     async function fetchSubmissions() {
       setSubmissionsLoading(true);
       setSubmissionsError(null);
@@ -149,7 +157,17 @@ export default function ExercisePage() {
     }
     fetchSubmissions();
     return () => { cancelled = true; };
-  }, [exerciseId]);
+  }, [exerciseId, subsFetchCount]);
+
+  // bfcache restore: browser back/forward may skip unmount entirely.
+  // pageshow with e.persisted fires in this case; increment the counter to re-trigger the fetch.
+  useEffect(() => {
+    function onPageShow(e: PageTransitionEvent) {
+      if (e.persisted) setSubsFetchCount((n) => n + 1);
+    }
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
 
   // After polling completes on an evaluated submission, refresh progress + update history
   useEffect(() => {
@@ -179,10 +197,7 @@ export default function ExercisePage() {
   }
 
   const activeEnrolment = me?.enrolments.find((e) => e.status === "active");
-  const isFacilitator =
-    me?.global_role === "facilitator" ||
-    me?.global_role === "org_admin" ||
-    me?.global_role === "super_admin";
+  const isFacilitator = !!(me?.global_role && STAFF_ROLES.has(me.global_role));
 
   const consolidationUnlocked =
     progress?.phase === "consolidation_unlocked" || progress?.phase === "completed";
@@ -297,11 +312,12 @@ export default function ExercisePage() {
           ) : (
             /* ── Challenge view ── */
             <div className="stack">
-              {/* Problem statement */}
+              {/* Problem statement — disallowedElements prevents any <details>/<summary> in
+                  prompt_markdown data from rendering, even if rehype-raw is later added. */}
               <div className="card">
                 <h2 style={{ marginBottom: "var(--space-4)" }}>The challenge</h2>
                 <div className="prose">
-                  <ReactMarkdown>{exercise.prompt_markdown}</ReactMarkdown>
+                  <ReactMarkdown disallowedElements={["details", "summary"]} unwrapDisallowed>{exercise.prompt_markdown}</ReactMarkdown>
                 </div>
               </div>
 
