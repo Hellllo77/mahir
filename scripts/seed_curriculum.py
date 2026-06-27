@@ -141,24 +141,54 @@ def _parse_beats(beat_structure_raw: str, week_num: int) -> list[dict]:
     return beats if beats else [{"title": "Session", "description": "", "sequence_index": 1}]
 
 
-_FACILITATOR_DELIMITER = re.compile(
+_FACILITATOR_OPENER_RE = re.compile(
+    r"\*\*(?:What the facilitator (?:says|does)|"
+    r"Opener\s*[—\-]\s*what the facilitator says)[^*]*\*\*",
+    re.IGNORECASE,
+)
+
+_FACILITATOR_NOTES_RE = re.compile(
     r"\n\*\*(?:Facilitator notes?|Teacher notes?|For the facilitator)[^*]*\*\*",
     re.IGNORECASE,
 )
 
+_SECTION_SEP_RE = re.compile(r"\n---\n")
+
 
 def _split_facilitator_notes(section_content: str) -> "tuple[str, object]":
-    """Split section content into (student_content, facilitator_notes_markdown).
+    """Split Section 3 into (student_content, facilitator_notes_markdown).
 
-    Splits at the first bold heading matching a facilitator/teacher notes pattern.
-    Returns (full_content, None) if no delimiter is found.
+    Two-pass approach:
+    1. Strip leading facilitator opener ('What the facilitator says', 'Opener — what the
+       facilitator says') if it appears early in the section (before 600 chars). The opener
+       block extends to the next --- separator; content after the separator is student-facing.
+    2. Split remaining body at inline facilitator notes ('**Facilitator notes...**').
+
+    Returns (full_content, None) when no facilitator content is found.
     """
-    m = _FACILITATOR_DELIMITER.search(section_content)
-    if not m:
-        return section_content.strip(), None
-    student_part = section_content[: m.start()].strip()
-    facilitator_part = section_content[m.start():].strip()
-    return student_part, facilitator_part
+    opener_text = None
+    body = section_content
+
+    opener_m = _FACILITATOR_OPENER_RE.search(body[:600])
+    if opener_m:
+        sep_m = _SECTION_SEP_RE.search(body, opener_m.start())
+        if sep_m:
+            opener_text = body[: sep_m.end()].strip()
+            body = body[sep_m.end():].strip()
+        else:
+            return "", body.strip()
+
+    notes_m = _FACILITATOR_NOTES_RE.search(body)
+    if notes_m:
+        student_part = body[: notes_m.start()].strip()
+        notes_part = body[notes_m.start():].strip()
+        if opener_text:
+            notes_part = opener_text + "\n\n---\n\n" + notes_part
+        return student_part, notes_part
+
+    if opener_text:
+        return body.strip(), opener_text
+    return body.strip(), None
 
 
 def _extract_section(text_content: str, section_num: int) -> str:

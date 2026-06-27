@@ -24,7 +24,7 @@ async def get_my_progress(db: AsyncSession, enrolment_id: str, user: User) -> li
         )
     )
     records = result.scalars().all()
-    return [_progress_to_dict(p, db) for p in records]
+    return [_progress_to_dict(p) for p in records]
 
 
 _ADMIN_ROLES = {UserGlobalRole.super_admin, UserGlobalRole.org_admin, UserGlobalRole.facilitator}
