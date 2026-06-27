@@ -45,7 +45,8 @@ async def _evaluate_async(submission_id: str) -> None:
     await engine.dispose()  # asyncpg pools are loop-bound; dispose before each RQ job so new connections bind to this loop
     async with AsyncSessionLocal() as db:
         try:
-            await _pipeline(db, submission_id)
+            api_key, preferred_model = await _load_org_settings(db, submission_id)
+            await _pipeline(db, submission_id, api_key, preferred_model)
             await db.commit()
         except Exception:
             await db.rollback()
@@ -54,7 +55,38 @@ async def _evaluate_async(submission_id: str) -> None:
             raise
 
 
-async def _pipeline(db, submission_id: str) -> None:
+async def _load_org_settings(db, submission_id: str) -> tuple[str | None, str | None]:
+    """Resolve org-scoped OpenRouter key + preferred model for this submission."""
+    from sqlalchemy import select
+    from src.db.models.auth import Enrolment, User
+    from src.db.models.admin import OrganisationSettings
+
+    sub_r = await db.execute(select(Submission).where(Submission.id == submission_id))
+    sub = sub_r.scalar_one_or_none()
+    if sub is None:
+        return None, None
+
+    enr_r = await db.execute(select(Enrolment).where(Enrolment.id == sub.enrolment_id))
+    enrolment = enr_r.scalar_one_or_none()
+    if enrolment is None:
+        return None, None
+
+    usr_r = await db.execute(select(User).where(User.id == enrolment.user_id))
+    user = usr_r.scalar_one_or_none()
+    if user is None:
+        return None, None
+
+    os_r = await db.execute(
+        select(OrganisationSettings).where(OrganisationSettings.org_id == user.organization_id)
+    )
+    org_settings = os_r.scalar_one_or_none()
+
+    api_key = (org_settings.openrouter_api_key if org_settings else None) or None
+    preferred_model = (org_settings.preferred_model if org_settings else None) or None
+    return api_key, preferred_model
+
+
+async def _pipeline(db, submission_id: str, api_key: str | None = None, preferred_model: str | None = None) -> None:
     from sqlalchemy import select
 
     sub_r = await db.execute(select(Submission).where(Submission.id == submission_id))
@@ -98,7 +130,7 @@ async def _pipeline(db, submission_id: str) -> None:
         build_spec,
     )
 
-    # Stage 2: LLM judge via OpenRouter
+    # Stage 2: LLM judge via OpenRouter (org-scoped key + model override)
     judge_result, meta = await judge_submission(
         submission_payload=payload,
         transcript_bundle=sandbox_result.transcript_bundle,
@@ -106,6 +138,8 @@ async def _pipeline(db, submission_id: str) -> None:
         rubric_criteria=[_rubric_dict(c) for c in rubric_criteria],
         exercise_prompt=exercise.prompt_markdown or "",
         approach_codes=[a.code for a in approaches],
+        api_key=api_key,
+        preferred_model=preferred_model,
     )
 
     now = datetime.now(timezone.utc)

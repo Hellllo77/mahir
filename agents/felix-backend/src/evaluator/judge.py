@@ -109,16 +109,15 @@ def _build_exercise_context(
     return "\n".join(lines)
 
 
-def _get_client() -> openai.AsyncOpenAI:
+def _get_client(api_key: str | None = None) -> openai.AsyncOpenAI:
     return openai.AsyncOpenAI(
         base_url="https://openrouter.ai/api/v1",
-        api_key=os.getenv("OPENROUTER_API_KEY"),
+        api_key=api_key or os.getenv("OPENROUTER_API_KEY"),
     )
 
 
-async def _prefilter(transcript_bundle: str, submission_payload: dict) -> tuple[bool, _Usage]:
+async def _prefilter(client: openai.AsyncOpenAI, transcript_bundle: str, submission_payload: dict) -> tuple[bool, _Usage]:
     """Fast Haiku classification — genuine attempt or junk?"""
-    client = _get_client()
     usage = _Usage()
 
     payload_preview = json.dumps(submission_payload, separators=(",", ":"))[:2000]
@@ -155,13 +154,13 @@ async def _prefilter(transcript_bundle: str, submission_payload: dict) -> tuple[
 
 
 async def _run_judge(
+    client: openai.AsyncOpenAI,
     exercise_context: str,
     transcript_bundle: str,
     submission_payload: dict,
     model: str,
 ) -> tuple[JudgeOutput, _Usage]:
     """Structured LLM judge via OpenRouter — returns parsed JudgeOutput."""
-    client = _get_client()
     usage = _Usage()
 
     payload_str = json.dumps(submission_payload, indent=2)[:4000]
@@ -200,16 +199,22 @@ async def judge_submission(
     rubric_criteria: list[dict],
     exercise_prompt: str,
     approach_codes: list[str] | None = None,
+    api_key: str | None = None,
+    preferred_model: str | None = None,
 ) -> tuple[JudgeOutput, dict]:
     """Pre-filter → main judge → optional Opus escalation.
 
+    api_key: org-scoped OpenRouter key; falls back to OPENROUTER_API_KEY env var.
+    preferred_model: org-scoped default model; falls back to settings.judge_model_default.
     Returns (JudgeOutput, metadata) where metadata has usage + cost fields
     matching EvaluationResult columns.
     """
+    client = _get_client(api_key)
+    default_model = preferred_model or _settings.judge_model_default
     escalated = False
 
     # Pre-filter
-    is_genuine, pf_usage = await _prefilter(transcript_bundle, submission_payload)
+    is_genuine, pf_usage = await _prefilter(client, transcript_bundle, submission_payload)
 
     if not is_genuine:
         result = JudgeOutput(
@@ -236,13 +241,13 @@ async def judge_submission(
             "cost_micro_usd": pf_usage.cost_micro_usd("haiku"),
         }
 
-    # Main judge (Sonnet)
+    # Main judge (Sonnet / org preferred model)
     exercise_context = _build_exercise_context(
         exercise_prompt, scenarios, rubric_criteria, approach_codes
     )
     judge_result, judge_usage = await _run_judge(
-        exercise_context, transcript_bundle, submission_payload,
-        model=_settings.judge_model_default,
+        client, exercise_context, transcript_bundle, submission_payload,
+        model=default_model,
     )
 
     # Escalate to Opus when confidence is below threshold
@@ -250,13 +255,13 @@ async def judge_submission(
     if judge_result.confidence < _settings.judge_escalation_threshold:
         escalated = True
         esc_result, esc_usage = await _run_judge(
-            exercise_context, transcript_bundle, submission_payload,
+            client, exercise_context, transcript_bundle, submission_payload,
             model=_settings.judge_model_escalation,
         )
         if esc_result.confidence >= judge_result.confidence:
             judge_result = esc_result
 
-    used_model = _settings.judge_model_escalation if escalated else _settings.judge_model_default
+    used_model = _settings.judge_model_escalation if escalated else default_model
     cost = (
         pf_usage.cost_micro_usd("haiku")
         + judge_usage.cost_micro_usd("sonnet")

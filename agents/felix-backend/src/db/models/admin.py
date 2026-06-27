@@ -11,6 +11,8 @@ class OrganisationSettings(Base):
     id = Column(String(36), primary_key=True, default=uuid7_str)
     org_id = Column(String(36), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, unique=True)
     resend_api_key = Column(Text, nullable=True)
+    openrouter_api_key = Column(String, nullable=True)
+    preferred_model = Column(String, nullable=True, default="anthropic/claude-sonnet-4-6")
     updated_by = Column(String(36), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
