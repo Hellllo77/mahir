@@ -11,6 +11,7 @@ import {
   listSubmissions,
   getMe,
   getModules,
+  getModuleExercises,
   ApiClientError,
   PhaseLocked,
 } from "@/lib/api-client";
@@ -37,6 +38,7 @@ export default function ExercisePage() {
 
   const [me, setMe] = useState<Me | null>(null);
   const [exercise, setExercise] = useState<Exercise | null>(null);
+  const [moduleExercises, setModuleExercises] = useState<Exercise[]>([]);
   const [progress, setProgress] = useState<ExerciseProgress | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [consolidation, setConsolidation] = useState<ConsolidationContent | null>(null);
@@ -82,11 +84,16 @@ export default function ExercisePage() {
         setProgress(progData);
         setSubmissions(subsData);
 
-        // Load sidebar modules
+        // Load sidebar modules + sibling beat exercises
         const activeEnrolment = meData.enrolments.find((e) => e.status === "active");
         if (activeEnrolment) {
           const mods = await getModules(activeEnrolment.cohort_id);
           setModules(mods);
+          // Fetch all exercises in the same module so AgentBuilder can show all beats
+          if (exData.module_id) {
+            const siblings = await getModuleExercises(activeEnrolment.cohort_id, exData.module_id).catch(() => []);
+            setModuleExercises(siblings);
+          }
         }
 
         // Fetch consolidation if already unlocked
@@ -290,6 +297,7 @@ export default function ExercisePage() {
                   </h3>
                   <AgentBuilder
                     exercise={exercise}
+                    moduleExercises={moduleExercises}
                     onSubmit={handleSubmit}
                     submitting={submitting}
                   />

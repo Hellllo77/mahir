@@ -3,46 +3,40 @@
 import { useState } from "react";
 import type { Exercise, SubmissionCreate } from "@/lib/api-types";
 
-const MODEL_OPTIONS = [
-  { value: "claude-haiku-4-5", label: "Claude Haiku 4.5 (fast)" },
-  { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6 (balanced)" },
-];
-
 interface Props {
   exercise: Exercise;
+  moduleExercises: Exercise[];
   onSubmit: (body: SubmissionCreate, idempotencyKey: string) => Promise<void>;
   submitting: boolean;
 }
 
-export function AgentBuilder({ exercise, onSubmit, submitting }: Props) {
-  const [systemPrompt, setSystemPrompt] = useState("");
-  const [userPromptTemplate, setUserPromptTemplate] = useState("");
-  const [model, setModel] = useState(MODEL_OPTIONS[0].value);
-  const [showBeatPrompt, setShowBeatPrompt] = useState(true);
+export function AgentBuilder({ exercise, moduleExercises, onSubmit, submitting }: Props) {
+  // Map exercise_id → student response text
+  const [responses, setResponses] = useState<Record<string, string>>(() =>
+    Object.fromEntries(moduleExercises.map((ex) => [ex.id, ""]))
+  );
   const [error, setError] = useState<string | null>(null);
 
-  const beatIndex = typeof exercise.build_spec?.beat_index === "number"
-    ? exercise.build_spec.beat_index as number
-    : null;
+  // Use moduleExercises if available; fall back to the single exercise
+  const beats = moduleExercises.length > 0 ? moduleExercises : [exercise];
+
+  function setResponse(exerciseId: string, value: string) {
+    setResponses((prev) => ({ ...prev, [exerciseId]: value }));
+  }
+
+  const allFilled = beats.every((ex) => (responses[ex.id] ?? "").trim().length > 0);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    if (!systemPrompt.trim()) {
-      setError("System prompt is required.");
-      return;
-    }
+    const beatsPayload = beats.map((ex) => ({
+      prompt: ex.prompt_markdown,
+      response: (responses[ex.id] ?? "").trim(),
+    }));
 
-    const payload = {
-      schema_version: "1.0",
-      agent_type: "single-prompt",
-      system_prompt: systemPrompt.trim(),
-      user_prompt_template: userPromptTemplate.trim(),
-      model,
-      tools: [],
-      config: {},
-    };
+    // Placeholder payload shape — Felix will confirm correct field name
+    const payload = { beats: beatsPayload };
 
     const key = `${exercise.id}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     onSubmit({ payload }, key).catch((err: Error) => setError(err.message));
@@ -50,92 +44,64 @@ export function AgentBuilder({ exercise, onSubmit, submitting }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="stack">
-      {/* Beat header */}
-      <div style={{ display: "flex", alignItems: "baseline", gap: "var(--space-3)" }}>
-        {beatIndex !== null && (
-          <span className="badge" style={{ background: "var(--color-bg-surface-raised)", color: "var(--color-text-secondary)", flexShrink: 0 }}>
-            Beat {beatIndex}
-          </span>
-        )}
-        <span style={{ fontWeight: "var(--font-weight-medium)", fontSize: "var(--font-size-sm)" }}>
-          {exercise.title}
-        </span>
-      </div>
-
-      {/* Collapsible beat prompt */}
-      {exercise.prompt_markdown && (
-        <details
-          open={showBeatPrompt}
-          onToggle={(e) => setShowBeatPrompt((e.target as HTMLDetailsElement).open)}
-          style={{ background: "var(--color-bg-surface-raised)", borderRadius: "var(--radius-md)", padding: "var(--space-4)", border: "1px solid var(--color-border)" }}
-        >
-          <summary style={{ cursor: "pointer", fontSize: "var(--font-size-sm)", fontWeight: "var(--font-weight-medium)", color: "var(--color-text-secondary)" }}>
-            Beat prompt
-          </summary>
-          <div className="prose" style={{ marginTop: "var(--space-3)", fontSize: "var(--font-size-sm)" }}>
-            <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", background: "none", border: "none", padding: 0, margin: 0, fontSize: "inherit" }}>
-              {exercise.prompt_markdown}
-            </pre>
+      {beats.map((ex, i) => (
+        <div key={ex.id} className="stack" style={{ gap: "var(--space-3)" }}>
+          {/* Beat label */}
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+            <span
+              className="badge"
+              style={{
+                background: "var(--color-brand-primary)",
+                color: "var(--color-text-inverse)",
+                flexShrink: 0,
+              }}
+            >
+              {ex.title}
+            </span>
           </div>
-        </details>
-      )}
 
-      {/* System prompt */}
-      <div className="form-group">
-        <label className="form-label" htmlFor="system-prompt">
-          System prompt <span aria-hidden="true">*</span>
-        </label>
-        <p className="text-xs text-muted">
-          Tell the agent who it is and what it should do.
-        </p>
-        <textarea
-          id="system-prompt"
-          className="form-input"
-          rows={6}
-          value={systemPrompt}
-          onChange={(e) => setSystemPrompt(e.target.value)}
-          placeholder="You are a helpful assistant that…"
-          disabled={submitting}
-          style={{ resize: "vertical", fontFamily: "var(--font-family-mono)", fontSize: "var(--font-size-sm)" }}
-        />
-      </div>
+          {/* Beat prompt as context */}
+          {ex.prompt_markdown && (
+            <div
+              style={{
+                background: "var(--color-bg-surface-raised)",
+                border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius-md)",
+                padding: "var(--space-4)",
+                fontSize: "var(--font-size-sm)",
+                color: "var(--color-text-secondary)",
+                lineHeight: "var(--line-height-relaxed)",
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {ex.prompt_markdown}
+            </div>
+          )}
 
-      {/* User prompt template */}
-      <div className="form-group">
-        <label className="form-label" htmlFor="user-prompt-template">
-          User prompt template <span className="text-muted">(optional)</span>
-        </label>
-        <p className="text-xs text-muted">
-          The message sent to the agent. Use <code>{"{{input}}"}</code> as a placeholder for the test input.
-        </p>
-        <textarea
-          id="user-prompt-template"
-          className="form-input"
-          rows={4}
-          value={userPromptTemplate}
-          onChange={(e) => setUserPromptTemplate(e.target.value)}
-          placeholder={"Please help me with: {{input}}"}
-          disabled={submitting}
-          style={{ resize: "vertical", fontFamily: "var(--font-family-mono)", fontSize: "var(--font-size-sm)" }}
-        />
-      </div>
+          {/* Student response textarea */}
+          <div className="form-group">
+            <label
+              className="form-label"
+              htmlFor={`beat-response-${ex.id}`}
+            >
+              Your response
+            </label>
+            <textarea
+              id={`beat-response-${ex.id}`}
+              className="form-input"
+              rows={5}
+              value={responses[ex.id] ?? ""}
+              onChange={(e) => setResponse(ex.id, e.target.value)}
+              placeholder={`Write your response for ${ex.title}…`}
+              disabled={submitting}
+              style={{ resize: "vertical" }}
+            />
+          </div>
 
-      {/* Model selector */}
-      <div className="form-group">
-        <label className="form-label" htmlFor="model-select">Model</label>
-        <select
-          id="model-select"
-          className="form-input"
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          disabled={submitting}
-          style={{ cursor: "pointer" }}
-        >
-          {MODEL_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-      </div>
+          {/* Divider between beats */}
+          {i < beats.length - 1 && <hr className="divider" />}
+        </div>
+      ))}
 
       {error && <div className="alert alert-error text-sm">{error}</div>}
 
@@ -143,7 +109,7 @@ export function AgentBuilder({ exercise, onSubmit, submitting }: Props) {
         <button
           type="submit"
           className="btn btn-primary btn-lg"
-          disabled={submitting || !systemPrompt.trim()}
+          disabled={submitting || !allFilled}
         >
           {submitting ? (
             <>
@@ -151,14 +117,14 @@ export function AgentBuilder({ exercise, onSubmit, submitting }: Props) {
               Submitting…
             </>
           ) : (
-            "Submit agent"
+            "Submit"
           )}
         </button>
       </div>
 
       <p className="text-xs text-muted">
-        Your submission is async — we&apos;ll run it against test scenarios and score it with an LLM judge.
-        Results appear below when ready (usually under a minute).
+        Fill in all {beats.length} beat{beats.length !== 1 ? "s" : ""} before submitting.
+        Results appear below when ready.
       </p>
     </form>
   );
