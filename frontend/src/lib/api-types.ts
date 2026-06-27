@@ -139,7 +139,7 @@ export interface SubmissionDetail extends Submission {
 
 export interface SubmissionCreate {
   payload: Record<string, unknown>;
-  artifact_refs?: Array<Record<string, unknown>>;
+  artifact_refs?: Array<Record<string, unknown>> | null;
 }
 
 export interface LearnerExerciseSummary {

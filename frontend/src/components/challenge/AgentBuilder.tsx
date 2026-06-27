@@ -11,17 +11,18 @@ interface Props {
 }
 
 export function AgentBuilder({ exercise, moduleExercises, onSubmit, submitting }: Props) {
-  // Map exercise_id → student response text
+  // Use module exercises sorted by sequence_index; fall back to single exercise
+  const beats = (moduleExercises.length > 0 ? moduleExercises : [exercise])
+    .slice()
+    .sort((a, b) => a.sequence_index - b.sequence_index);
+
   const [responses, setResponses] = useState<Record<string, string>>(() =>
-    Object.fromEntries(moduleExercises.map((ex) => [ex.id, ""]))
+    Object.fromEntries(beats.map((ex) => [ex.id, ""]))
   );
   const [error, setError] = useState<string | null>(null);
 
-  // Use moduleExercises if available; fall back to the single exercise
-  const beats = moduleExercises.length > 0 ? moduleExercises : [exercise];
-
-  function setResponse(exerciseId: string, value: string) {
-    setResponses((prev) => ({ ...prev, [exerciseId]: value }));
+  function setResponse(id: string, value: string) {
+    setResponses((prev) => ({ ...prev, [id]: value }));
   }
 
   const allFilled = beats.every((ex) => (responses[ex.id] ?? "").trim().length > 0);
@@ -30,16 +31,13 @@ export function AgentBuilder({ exercise, moduleExercises, onSubmit, submitting }
     e.preventDefault();
     setError(null);
 
-    const beatsPayload = beats.map((ex) => ({
-      prompt: ex.prompt_markdown,
-      response: (responses[ex.id] ?? "").trim(),
-    }));
-
-    // Placeholder payload shape — Felix will confirm correct field name
-    const payload = { beats: beatsPayload };
+    const payload: Record<string, unknown> = { schema_version: "beat_responses_1.0" };
+    for (const ex of beats) {
+      payload[`beat_${ex.sequence_index}`] = (responses[ex.id] ?? "").trim();
+    }
 
     const key = `${exercise.id}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    onSubmit({ payload }, key).catch((err: Error) => setError(err.message));
+    onSubmit({ payload, artifact_refs: null }, key).catch((err: Error) => setError(err.message));
   }
 
   return (
@@ -47,18 +45,16 @@ export function AgentBuilder({ exercise, moduleExercises, onSubmit, submitting }
       {beats.map((ex, i) => (
         <div key={ex.id} className="stack" style={{ gap: "var(--space-3)" }}>
           {/* Beat label */}
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-            <span
-              className="badge"
-              style={{
-                background: "var(--color-brand-primary)",
-                color: "var(--color-text-inverse)",
-                flexShrink: 0,
-              }}
-            >
-              {ex.title}
-            </span>
-          </div>
+          <span
+            className="badge"
+            style={{
+              background: "var(--color-brand-primary)",
+              color: "var(--color-text-inverse)",
+              alignSelf: "flex-start",
+            }}
+          >
+            {ex.title}
+          </span>
 
           {/* Beat prompt as context */}
           {ex.prompt_markdown && (
@@ -80,10 +76,7 @@ export function AgentBuilder({ exercise, moduleExercises, onSubmit, submitting }
 
           {/* Student response textarea */}
           <div className="form-group">
-            <label
-              className="form-label"
-              htmlFor={`beat-response-${ex.id}`}
-            >
+            <label className="form-label" htmlFor={`beat-response-${ex.id}`}>
               Your response
             </label>
             <textarea
@@ -98,7 +91,6 @@ export function AgentBuilder({ exercise, moduleExercises, onSubmit, submitting }
             />
           </div>
 
-          {/* Divider between beats */}
           {i < beats.length - 1 && <hr className="divider" />}
         </div>
       ))}
