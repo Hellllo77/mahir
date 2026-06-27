@@ -1,9 +1,8 @@
 """Admin settings service — org-scoped config (Resend key, OpenRouter key + model)."""
-from typing import Optional
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.admin.schemas import SettingsUpdate
 from src.db.models.admin import OrganisationSettings
 from src.db.models.auth import User, UserGlobalRole
 from src.db.uuidv7 import uuid7_str
@@ -30,13 +29,12 @@ async def get_settings(db: AsyncSession, user: User) -> dict:
     }
 
 
-async def update_settings(
-    db: AsyncSession,
-    user: User,
-    resend_api_key: Optional[str] = None,
-    openrouter_api_key: Optional[str] = None,
-    preferred_model: Optional[str] = None,
-) -> dict:
+async def update_settings(db: AsyncSession, user: User, body: SettingsUpdate) -> dict:
+    """Partial update — only fields present in the request body are written.
+
+    Explicit null clears the field; omitting a field leaves it unchanged.
+    Uses model_fields_set to distinguish omitted from explicitly-null.
+    """
     if user.global_role not in _ADMIN_ROLES:
         raise forbidden("org_admin or super_admin role required.")
 
@@ -54,12 +52,13 @@ async def update_settings(
         )
         db.add(s)
 
-    if resend_api_key is not None:
-        s.resend_api_key = resend_api_key
-    if openrouter_api_key is not None:
-        s.openrouter_api_key = openrouter_api_key
-    if preferred_model is not None:
-        s.preferred_model = preferred_model
+    provided = body.model_fields_set
+    if "resend_api_key" in provided:
+        s.resend_api_key = body.resend_api_key
+    if "openrouter_api_key" in provided:
+        s.openrouter_api_key = body.openrouter_api_key
+    if "preferred_model" in provided:
+        s.preferred_model = body.preferred_model
     s.updated_by = user.id
     await db.flush()
 
