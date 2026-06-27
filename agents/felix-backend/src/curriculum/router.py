@@ -11,6 +11,11 @@ async def list_modules(cohort_id: str, db: DbDep, current_user: CurrentUser):
     return await service.list_modules(db, cohort_id, current_user)
 
 
+@router.get("/cohorts/{cohort_id}/modules/{module_id}/exercises", response_model=list[schemas.ExerciseOut])
+async def list_module_exercises(cohort_id: str, module_id: str, db: DbDep, current_user: CurrentUser):
+    return await service.list_module_exercises(db, cohort_id, module_id, current_user)
+
+
 @router.get("/exercises/{exercise_id}", response_model=schemas.ExerciseOut)
 async def get_exercise(exercise_id: str, db: DbDep, current_user: CurrentUser):
     return await service.get_exercise(db, exercise_id, current_user)

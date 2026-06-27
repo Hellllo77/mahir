@@ -69,6 +69,48 @@ async def list_modules(db: AsyncSession, cohort_id: str, user: User) -> list[dic
     ]
 
 
+async def list_module_exercises(db: AsyncSession, cohort_id: str, module_id: str, user: User) -> list[dict]:
+    """Return ordered exercises for a module, scoped to cohort access."""
+    await assert_cohort_access(db, cohort_id, user)
+
+    enrolment_result = await db.execute(
+        select(Enrolment).where(
+            Enrolment.cohort_id == cohort_id,
+            Enrolment.user_id == user.id,
+            Enrolment.deleted_at.is_(None),
+        )
+    )
+    enrolment = enrolment_result.scalar_one_or_none()
+    if enrolment is None and user.global_role not in _ADMIN_ROLES:
+        raise forbidden("Not enrolled in this cohort.")
+
+    result = await db.execute(
+        select(Exercise)
+        .where(Exercise.module_id == module_id, Exercise.deleted_at.is_(None))
+        .order_by(Exercise.sequence_index)
+    )
+    exercises = result.scalars().all()
+
+    return [
+        {
+            "id": ex.id,
+            "module_id": ex.module_id,
+            "title": ex.title,
+            "sequence_index": ex.sequence_index,
+            "prompt_markdown": ex.prompt_markdown,
+            "build_spec": json.loads(ex.build_spec) if ex.build_spec else {},
+            "prerequisite_exercise_ids": json.loads(ex.prerequisite_exercise_ids or "[]"),
+            "gate": {
+                "min_attempts": ex.min_attempts,
+                "min_distinct_approaches": ex.min_distinct_approaches,
+                "min_exploration_seconds": ex.min_exploration_seconds,
+                "allow_fast_unlock": ex.allow_fast_unlock,
+            },
+        }
+        for ex in exercises
+    ]
+
+
 async def get_exercise(db: AsyncSession, exercise_id: str, user: User) -> dict:
     """Return exercise problem statement — never includes consolidation."""
     result = await db.execute(
