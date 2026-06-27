@@ -9,6 +9,7 @@ import {
   getConsolidation,
   submitAgent,
   listSubmissions,
+  getSubmission,
   getMe,
   getModules,
   getModuleExercises,
@@ -19,6 +20,7 @@ import type {
   Exercise,
   ExerciseProgress,
   Submission,
+  SubmissionDetail,
   SubmissionCreate,
   Me,
   Module,
@@ -27,6 +29,7 @@ import type {
 import { AppShell } from "@/components/layout/AppShell";
 import { ModuleNav } from "@/components/nav/ModuleNav";
 import { PhaseTag } from "@/components/ui/PhaseTag";
+import { PFSignalBadge } from "@/components/ui/PFSignalBadge";
 import { PFGateProgress } from "@/components/evaluation/PFGateProgress";
 import { AgentBuilder } from "@/components/challenge/AgentBuilder";
 import { SubmissionStatus } from "@/components/challenge/SubmissionStatus";
@@ -41,6 +44,7 @@ export default function ExercisePage() {
   const [moduleExercises, setModuleExercises] = useState<Exercise[]>([]);
   const [progress, setProgress] = useState<ExerciseProgress | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [submissionDetails, setSubmissionDetails] = useState<Record<string, SubmissionDetail>>({});
   const [consolidation, setConsolidation] = useState<ConsolidationContent | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,6 +88,14 @@ export default function ExercisePage() {
         setProgress(progData);
         setSubmissions(subsData);
 
+        // Fetch full details for each historical submission (gets eval results)
+        if (subsData.length > 0) {
+          const details = await Promise.all(subsData.map((s) => getSubmission(s.id).catch(() => null)));
+          const detailMap: Record<string, SubmissionDetail> = {};
+          details.forEach((d) => { if (d) detailMap[d.id] = d; });
+          setSubmissionDetails(detailMap);
+        }
+
         // Load sidebar modules + sibling beat exercises
         const activeEnrolment = meData.enrolments.find((e) => e.status === "active");
         if (activeEnrolment) {
@@ -119,9 +131,10 @@ export default function ExercisePage() {
     load();
   }, [exerciseId]);
 
-  // After polling completes on an evaluated submission, refresh progress
+  // After polling completes on an evaluated submission, refresh progress + update history
   useEffect(() => {
     if (latestSubDetail?.status === "evaluated") {
+      setSubmissionDetails((prev) => ({ ...prev, [latestSubDetail.id]: latestSubDetail }));
       setSubmissions((prev) => {
         const exists = prev.find((s) => s.id === latestSubDetail.id);
         return exists ? prev.map((s) => (s.id === latestSubDetail.id ? latestSubDetail : s)) : [latestSubDetail, ...prev];
@@ -339,43 +352,60 @@ export default function ExercisePage() {
                 </div>
               )}
 
-              {/* Previous submissions */}
-              {submissions.length > 1 && (
-                <details className="card">
-                  <summary style={{ cursor: "pointer", fontWeight: "var(--font-weight-medium)", fontSize: "var(--font-size-sm)" }}>
-                    Previous attempts ({submissions.length})
-                  </summary>
-                  <div className="stack" style={{ marginTop: "var(--space-4)", gap: "var(--space-2)" }}>
-                    {submissions.map((sub) => (
-                      <div
-                        key={sub.id}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          padding: "var(--space-3)",
-                          borderRadius: "var(--radius-md)",
-                          background: "var(--color-bg-surface-raised)",
-                          fontSize: "var(--font-size-sm)",
-                        }}
-                      >
-                        <span>Attempt #{sub.attempt_number}</span>
-                        <span
-                          className="badge"
-                          style={{
-                            background: `var(--color-status-${sub.status.replace("_", "-")}-bg, var(--color-bg-surface-raised))`,
-                            color: `var(--color-status-${sub.status.replace("_", "-")}-text, var(--color-text-secondary))`,
-                          }}
-                        >
-                          {sub.status}
-                        </span>
-                        <span className="text-xs text-muted">
-                          {new Date(sub.submitted_at).toLocaleString()}
-                        </span>
-                      </div>
-                    ))}
+              {/* Attempt history — persists across navigation */}
+              {submissions.length > 0 && (
+                <div>
+                  <h3 style={{ marginBottom: "var(--space-3)", fontSize: "var(--font-size-base)" }}>Attempt history</h3>
+                  <div className="stack" style={{ gap: "var(--space-3)" }}>
+                    {submissions.map((sub) => {
+                      const detail = submissionDetails[sub.id];
+                      const result = detail?.result;
+                      return (
+                        <div key={sub.id} className="card" style={{ padding: "var(--space-4)" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", flexWrap: "wrap" }}>
+                            <span style={{ fontWeight: "var(--font-weight-semibold)", fontSize: "var(--font-size-sm)" }}>
+                              Attempt #{sub.attempt_number}
+                            </span>
+                            <span className="text-xs text-muted">
+                              {new Date(sub.submitted_at).toLocaleString()}
+                            </span>
+                            {(sub.status === "queued" || sub.status === "running") && (
+                              <span className="badge" style={{ background: "var(--color-warning-bg, #fef3c7)", color: "var(--color-warning, #92400e)" }}>
+                                Evaluation in progress…
+                              </span>
+                            )}
+                            {sub.status === "failed" && (
+                              <span className="badge" style={{ background: "var(--color-error-bg, #fee2e2)", color: "var(--color-error, #dc2626)" }}>
+                                Evaluation error
+                              </span>
+                            )}
+                            {result && (
+                              <>
+                                <span className="badge" style={{
+                                  background: result.passed ? "var(--color-success-bg, #d1fae5)" : "var(--color-error-bg, #fee2e2)",
+                                  color: result.passed ? "var(--color-success, #065f46)" : "var(--color-error, #dc2626)",
+                                }}>
+                                  {result.passed ? "Pass" : "Fail"}
+                                </span>
+                                {result.productive_failure_signal && (
+                                  <PFSignalBadge signal={result.productive_failure_signal} />
+                                )}
+                                <span className="text-xs text-muted">
+                                  Score: {Math.round(result.overall_score * 100)}%
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          {result?.feedback_markdown && (
+                            <div className="prose" style={{ fontSize: "var(--font-size-sm)", marginTop: "var(--space-3)", paddingTop: "var(--space-3)", borderTop: "1px solid var(--color-border)" }}>
+                              <ReactMarkdown>{result.feedback_markdown}</ReactMarkdown>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                </details>
+                </div>
               )}
             </div>
           )}
