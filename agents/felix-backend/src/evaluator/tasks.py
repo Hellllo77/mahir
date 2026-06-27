@@ -98,8 +98,8 @@ async def _pipeline(db, submission_id: str) -> None:
         build_spec,
     )
 
-    # Stage 2: LLM judge (sync Anthropic calls — worker process only)
-    judge_result, meta = judge_submission(
+    # Stage 2: LLM judge via OpenRouter
+    judge_result, meta = await judge_submission(
         submission_payload=payload,
         transcript_bundle=sandbox_result.transcript_bundle,
         scenarios=[_scenario_dict(s) for s in scenarios],

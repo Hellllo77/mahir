@@ -1,17 +1,16 @@
 """Stage 2 — LLM judge pipeline (ADR-003).
 
-Pre-filter (Haiku) → main judge (Sonnet, structured output + adaptive thinking)
-→ optional escalation (Opus) when confidence < threshold.
-
-Prompt caching targets the stable rubric + scenario block per exercise.
+Pre-filter (Haiku) → main judge (Sonnet) → optional escalation (Opus)
+when confidence < threshold. Runs via OpenRouter (openai-compatible API).
 API keys never enter the sandbox — all model calls are host-side.
 """
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, field
 
-import anthropic
+import openai
 
 from src.config import settings as _settings
 from src.evaluator.schemas import JudgeOutput
@@ -31,6 +30,22 @@ Rules:
 - feedback_markdown is shown to the learner: keep it encouraging and focus on what was explored.
 """
 
+_JUDGE_JSON_INSTRUCTION = """\
+Output ONLY valid JSON with this exact structure (no markdown fences):
+{
+  "schema_version": "1.0",
+  "ran": <bool>,
+  "scenario_results": [{"scenario_id": <str>, "passed": <bool>, "detail": <str>}, ...],
+  "rubric_scores": [{"criterion_id": <str>, "met": <bool>, "score": <0.0-1.0>, "confidence": <0.0-1.0>, "severity": <"minor"|"major"|"critical">, "evidence": <str>}, ...],
+  "overall_score": <0.0-1.0>,
+  "productive_failure_signal": <"productive"|"low_effort"|"off_task">,
+  "detected_approach": <str or null>,
+  "confidence": <0.0-1.0>,
+  "passed": <bool>,
+  "feedback_markdown": <str>
+}
+"""
+
 # Micro-USD per token (1 USD = 1,000,000 micro-USD; prices are per million tokens)
 _PRICING: dict[str, tuple[float, float, float, float]] = {
     # tier: (input, output, cache_write, cache_read)
@@ -47,11 +62,12 @@ class _Usage:
     cache_creation_input_tokens: int = 0
     cache_read_input_tokens: int = 0
 
-    def absorb(self, usage: anthropic.types.Usage) -> None:
-        self.input_tokens += usage.input_tokens
-        self.output_tokens += usage.output_tokens
-        self.cache_creation_input_tokens += getattr(usage, "cache_creation_input_tokens", None) or 0
-        self.cache_read_input_tokens += getattr(usage, "cache_read_input_tokens", None) or 0
+    def absorb(self, usage) -> None:
+        self.input_tokens += getattr(usage, "prompt_tokens", 0) or 0
+        self.output_tokens += getattr(usage, "completion_tokens", 0) or 0
+        # Cache token fields not exposed via OpenRouter/OpenAI SDK
+        self.cache_creation_input_tokens += 0
+        self.cache_read_input_tokens += 0
 
     def cost_micro_usd(self, tier: str) -> int:
         inp, out, cw, cr = _PRICING[tier]
@@ -93,18 +109,14 @@ def _build_exercise_context(
     return "\n".join(lines)
 
 
-_client: anthropic.Anthropic | None = None
+def _get_client() -> openai.AsyncOpenAI:
+    return openai.AsyncOpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=os.getenv("OPENROUTER_API_KEY"),
+    )
 
 
-def _get_client() -> anthropic.Anthropic:
-    global _client
-    if _client is None:
-        api_key = _settings.anthropic_api_key or None
-        _client = anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
-    return _client
-
-
-def _prefilter(transcript_bundle: str, submission_payload: dict) -> tuple[bool, _Usage]:
+async def _prefilter(transcript_bundle: str, submission_payload: dict) -> tuple[bool, _Usage]:
     """Fast Haiku classification — genuine attempt or junk?"""
     client = _get_client()
     usage = _Usage()
@@ -112,85 +124,76 @@ def _prefilter(transcript_bundle: str, submission_payload: dict) -> tuple[bool, 
     payload_preview = json.dumps(submission_payload, separators=(",", ":"))[:2000]
     transcript_preview = transcript_bundle[:3000]
 
-    resp = client.messages.create(
+    resp = await client.chat.completions.create(
         model=_settings.judge_model_prefilter,
         max_tokens=128,
         timeout=30.0,
-        system=(
-            "You are a classifier. Respond ONLY with 'GENUINE' or 'NOT_GENUINE', "
-            "followed by a colon and one short reason (≤15 words)."
-        ),
-        messages=[{
-            "role": "user",
-            "content": (
-                f"Submission payload:\n{payload_preview}\n\n"
-                f"Stage-1 transcript:\n{transcript_preview}\n\n"
-                "Is this a genuine attempt at building an agent for the exercise? "
-                "GENUINE = contains real code/logic/structure. "
-                "NOT_GENUINE = empty, random text, or completely off-task."
-            ),
-        }],
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a classifier. Respond ONLY with 'GENUINE' or 'NOT_GENUINE', "
+                    "followed by a colon and one short reason (≤15 words)."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Submission payload:\n{payload_preview}\n\n"
+                    f"Stage-1 transcript:\n{transcript_preview}\n\n"
+                    "Is this a genuine attempt at building an agent for the exercise? "
+                    "GENUINE = contains real code/logic/structure. "
+                    "NOT_GENUINE = empty, random text, or completely off-task."
+                ),
+            },
+        ],
     )
     usage.absorb(resp.usage)
 
-    text = ""
-    for block in resp.content:
-        if block.type == "text":
-            text = block.text.strip()
-            break
-    return text.upper().startswith("GENUINE"), usage
+    text = resp.choices[0].message.content or ""
+    return text.strip().upper().startswith("GENUINE"), usage
 
 
-def _run_judge(
+async def _run_judge(
     exercise_context: str,
     transcript_bundle: str,
     submission_payload: dict,
     model: str,
 ) -> tuple[JudgeOutput, _Usage]:
-    """Structured LLM judge with adaptive thinking and prompt caching."""
+    """Structured LLM judge via OpenRouter — returns parsed JudgeOutput."""
     client = _get_client()
     usage = _Usage()
 
     payload_str = json.dumps(submission_payload, indent=2)[:4000]
 
-    resp = client.messages.parse(
+    resp = await client.chat.completions.create(
         model=model,
         max_tokens=8192,
         timeout=30.0,
-        thinking={"type": "adaptive"},
-        system=[
-            {
-                "type": "text",
-                "text": _JUDGE_SYSTEM,
-                "cache_control": {"type": "ephemeral"},
-            }
-        ],
+        response_format={"type": "json_object"},
         messages=[
             {
+                "role": "system",
+                "content": _JUDGE_SYSTEM + "\n" + _JUDGE_JSON_INSTRUCTION,
+            },
+            {
                 "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": exercise_context,
-                        "cache_control": {"type": "ephemeral"},
-                    },
-                    {
-                        "type": "text",
-                        "text": (
-                            f"## Submission Payload\n```json\n{payload_str}\n```\n\n"
-                            f"## Stage-1 Transcript\n{transcript_bundle}"
-                        ),
-                    },
-                ],
-            }
+                "content": (
+                    f"{exercise_context}\n\n"
+                    f"## Submission Payload\n```json\n{payload_str}\n```\n\n"
+                    f"## Stage-1 Transcript\n{transcript_bundle}"
+                ),
+            },
         ],
-        output_format=JudgeOutput,
     )
     usage.absorb(resp.usage)
-    return resp.parsed_output, usage
+
+    content = resp.choices[0].message.content or "{}"
+    result = JudgeOutput.model_validate_json(content)
+    return result, usage
 
 
-def judge_submission(
+async def judge_submission(
     submission_payload: dict,
     transcript_bundle: str,
     scenarios: list[dict],
@@ -206,7 +209,7 @@ def judge_submission(
     escalated = False
 
     # Pre-filter
-    is_genuine, pf_usage = _prefilter(transcript_bundle, submission_payload)
+    is_genuine, pf_usage = await _prefilter(transcript_bundle, submission_payload)
 
     if not is_genuine:
         result = JudgeOutput(
@@ -237,7 +240,7 @@ def judge_submission(
     exercise_context = _build_exercise_context(
         exercise_prompt, scenarios, rubric_criteria, approach_codes
     )
-    judge_result, judge_usage = _run_judge(
+    judge_result, judge_usage = await _run_judge(
         exercise_context, transcript_bundle, submission_payload,
         model=_settings.judge_model_default,
     )
@@ -246,7 +249,7 @@ def judge_submission(
     esc_usage = _Usage()
     if judge_result.confidence < _settings.judge_escalation_threshold:
         escalated = True
-        esc_result, esc_usage = _run_judge(
+        esc_result, esc_usage = await _run_judge(
             exercise_context, transcript_bundle, submission_payload,
             model=_settings.judge_model_escalation,
         )

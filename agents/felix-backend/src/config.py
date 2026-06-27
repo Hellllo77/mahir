@@ -22,11 +22,11 @@ class Settings(BaseSettings):
     oidc_client_secret: str = ""
     oidc_redirect_uri: str = "http://localhost:8000/v1/auth/oidc/callback"
 
-    # Anthropic / LLM judge
-    anthropic_api_key: str = ""
-    judge_model_default: str = "claude-sonnet-4-6"
-    judge_model_escalation: str = "claude-opus-4-8"
-    judge_model_prefilter: str = "claude-haiku-4-5"
+    # OpenRouter / LLM judge
+    openrouter_api_key: str = ""
+    judge_model_default: str = "anthropic/claude-sonnet-4-6"
+    judge_model_escalation: str = "anthropic/claude-opus-4-8"
+    judge_model_prefilter: str = "anthropic/claude-haiku-4-5"
     judge_use_batches_api: bool = False  # enable for non-latency-sensitive bulk grading
     judge_escalation_threshold: float = 0.6  # escalate to Opus when confidence falls below this
 
