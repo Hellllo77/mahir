@@ -141,6 +141,8 @@ def _parse_beats(beat_structure_raw: str, week_num: int) -> list[dict]:
     return beats if beats else [{"title": "Session", "description": "", "sequence_index": 1}]
 
 
+_SECTION_META_DESC_RE = re.compile(r"^\*[^*\n][^\n]*\*\s*\n+---\n+")
+
 _FACILITATOR_OPENER_RE = re.compile(
     r"\*\*(?:What the facilitator (?:says|does)|"
     r"Opener\s*[—\-]\s*what the facilitator says)[^*]*\*\*",
@@ -158,7 +160,9 @@ _SECTION_SEP_RE = re.compile(r"\n---\n")
 def _split_facilitator_notes(section_content: str) -> "tuple[str, object]":
     """Split Section 3 into (student_content, facilitator_notes_markdown).
 
-    Two-pass approach:
+    Three-pass approach:
+    0. Strip leading italic section meta-description (e.g. "*What appears on the task card...*")
+       if followed immediately by a --- separator. These are authoring notes, not student content.
     1. Strip leading facilitator opener ('What the facilitator says', 'Opener — what the
        facilitator says') if it appears early in the section (before 600 chars). The opener
        block extends to the next --- separator; content after the separator is student-facing.
@@ -166,8 +170,9 @@ def _split_facilitator_notes(section_content: str) -> "tuple[str, object]":
 
     Returns (full_content, None) when no facilitator content is found.
     """
+    # Pass 0: strip leading italic section meta-description
+    body = _SECTION_META_DESC_RE.sub("", section_content, count=1)
     opener_text = None
-    body = section_content
 
     opener_m = _FACILITATOR_OPENER_RE.search(body[:600])
     if opener_m:
