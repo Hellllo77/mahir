@@ -89,9 +89,10 @@ export default function ExercisePage() {
         if (activeEnrolment) {
           const mods = await getModules(activeEnrolment.cohort_id);
           setModules(mods);
-          // Fetch all exercises in the same module so AgentBuilder can show all beats
-          if (exData.module_id) {
-            const siblings = await getModuleExercises(activeEnrolment.cohort_id, exData.module_id).catch(() => []);
+          // Find module that contains this exercise via the modules list (more reliable than exData.module_id)
+          const parentModule = mods.find((m) => m.exercises?.some((e) => e.id === exerciseId));
+          if (parentModule) {
+            const siblings = await getModuleExercises(activeEnrolment.cohort_id, parentModule.id).catch(() => []);
             setModuleExercises(siblings);
           }
         }

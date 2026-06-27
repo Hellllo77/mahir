@@ -90,23 +90,26 @@ export default function AdminSettingsPage() {
             </p>
           </div>
 
-          {saveSuccess && (
-            <div className="alert alert-success">Settings saved.</div>
-          )}
-
           <div className="card">
             <h2 style={{ marginBottom: "var(--space-6)" }}>Email</h2>
 
             <div className="stack">
               <div>
                 <p className="form-label" style={{ marginBottom: "var(--space-2)" }}>Resend API key</p>
-                {settings.resend_api_key ? (
-                  <p style={{ fontFamily: "var(--font-family-mono)", fontSize: "var(--font-size-sm)", color: "var(--color-text-secondary)" }}>
-                    {settings.resend_api_key}
-                  </p>
-                ) : (
-                  <p className="text-sm text-muted">Not configured — magic-link emails are disabled.</p>
-                )}
+                <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", flexWrap: "wrap" }}>
+                  {settings.resend_api_key ? (
+                    <span style={{ fontFamily: "var(--font-family-mono)", fontSize: "var(--font-size-sm)", color: "var(--color-text-secondary)" }}>
+                      {settings.resend_api_key}
+                    </span>
+                  ) : (
+                    <span className="text-sm text-muted">Not configured — magic-link emails are disabled.</span>
+                  )}
+                  {saveSuccess && (
+                    <span style={{ fontSize: "var(--font-size-sm)", color: "#065f46", fontWeight: "var(--font-weight-medium)" }}>
+                      ✓ Settings saved
+                    </span>
+                  )}
+                </div>
               </div>
 
               {!editing ? (

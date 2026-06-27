@@ -248,7 +248,7 @@ function CohortRow({
               </button>
               <button
                 style={{ display: "block", width: "100%", textAlign: "left", padding: "var(--space-3) var(--space-4)", background: "none", border: "none", cursor: "pointer", fontSize: "var(--font-size-sm)", color: "var(--color-error, #dc2626)" }}
-                onClick={() => { setMenuOpen(false); setConfirmDelete(true); }}
+                onClick={() => { setMenuOpen(false); setRowError(null); setConfirmDelete(true); }}
               >
                 Delete
               </button>
