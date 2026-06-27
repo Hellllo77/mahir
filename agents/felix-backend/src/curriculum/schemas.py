@@ -43,3 +43,17 @@ class ConsolidationContentOut(BaseModel):
     body_markdown: str
     reference_build: Optional[Any] = None
     check_questions: Optional[List[Any]] = None
+
+
+class CurriculumMeta(BaseModel):
+    id: str
+    title: str
+    edition: str
+    version: str
+    status: str
+
+
+class MyCurriculumOut(BaseModel):
+    curriculum: CurriculumMeta
+    modules: List[ModuleOut]
+    assigned_at: Optional[str] = None

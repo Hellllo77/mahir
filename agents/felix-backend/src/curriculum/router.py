@@ -5,6 +5,13 @@ from src.lib.deps import CurrentUser, DbDep
 
 router = APIRouter(tags=["curriculum"])
 
+me_curriculum_router = APIRouter(tags=["curriculum"])
+
+
+@me_curriculum_router.get("/me/curriculum", response_model=schemas.MyCurriculumOut)
+async def get_my_curriculum(db: DbDep, current_user: CurrentUser):
+    return await service.get_my_curriculum(db, current_user)
+
 
 @router.get("/cohorts/{cohort_id}/modules", response_model=list[schemas.ModuleOut])
 async def list_modules(cohort_id: str, db: DbDep, current_user: CurrentUser):

@@ -169,6 +169,7 @@ async def _get_or_create_progress(
     if progress is None:
         progress = ExerciseProgress(
             id=uuid7_str(),
+            user_id=actor_id,
             enrolment_id=enrolment_id,
             exercise_id=exercise_id,
             phase=ExercisePhase.exploring,

@@ -1,7 +1,7 @@
 """Curriculum models (ADR-001, data-model §2)."""
 import enum
 
-from sqlalchemy import Boolean, Column, Enum, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from src.db.base import AuditMixin, Base
@@ -116,3 +116,15 @@ class ConsolidationContent(AuditMixin, Base):
     check_questions = Column(Text, nullable=True)  # JSONB nullable
 
     exercise = relationship("Exercise", back_populates="consolidation")
+
+
+class UserCurriculum(AuditMixin, Base):
+    """Individual-first curriculum assignment — direct user→curriculum link (no cohort required)."""
+
+    __tablename__ = "user_curricula"
+
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    curriculum_id = Column(String(36), ForeignKey("curricula.id"), nullable=False)
+    assigned_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (UniqueConstraint("user_id", "curriculum_id", name="uq_user_curriculum"),)

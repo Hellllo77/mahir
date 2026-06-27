@@ -56,16 +56,31 @@ async def get_exercise_progress(db: AsyncSession, exercise_id: str, user: User) 
     if user.global_role in _ADMIN_ROLES:
         return {**_NOT_STARTED_PROGRESS, "exercise_id": exercise_id}
 
-    enrolment = await _find_enrolment_for_exercise(db, exercise, user)
-
+    # Individual-first: look up progress by user_id directly
     progress_result = await db.execute(
         select(ExerciseProgress).where(
-            ExerciseProgress.enrolment_id == enrolment.id,
+            ExerciseProgress.user_id == user.id,
             ExerciseProgress.exercise_id == exercise_id,
             ExerciseProgress.deleted_at.is_(None),
         )
     )
     progress = progress_result.scalar_one_or_none()
+
+    # Fallback: legacy enrolment-keyed records that predate the individual-first pivot
+    if progress is None:
+        try:
+            enrolment = await _find_enrolment_for_exercise(db, exercise, user)
+            fallback_result = await db.execute(
+                select(ExerciseProgress).where(
+                    ExerciseProgress.enrolment_id == enrolment.id,
+                    ExerciseProgress.exercise_id == exercise_id,
+                    ExerciseProgress.deleted_at.is_(None),
+                )
+            )
+            progress = fallback_result.scalar_one_or_none()
+        except Exception:
+            pass
+
     if progress is None:
         return {**_NOT_STARTED_PROGRESS, "exercise_id": exercise_id}
     return _progress_to_dict(progress, exercise)
@@ -255,15 +270,36 @@ async def recompute_progress_after_evaluation(
     """Update ExerciseProgress after evaluation.completed event (ADR-004 gate logic).
 
     Called by the evaluator worker — NOT synchronous at submit time.
+    Resolves progress by user_id (individual-first primary key) with fallback to enrolment_id.
     """
-    progress_result = await db.execute(
-        select(ExerciseProgress).where(
-            ExerciseProgress.enrolment_id == enrolment_id,
-            ExerciseProgress.exercise_id == exercise_id,
-            ExerciseProgress.deleted_at.is_(None),
-        )
+    # Resolve user_id from enrolment for individual-first lookup
+    enrolment_result = await db.execute(
+        select(Enrolment).where(Enrolment.id == enrolment_id)
     )
-    progress = progress_result.scalar_one_or_none()
+    enrolment = enrolment_result.scalar_one_or_none()
+
+    progress = None
+    if enrolment is not None:
+        progress_result = await db.execute(
+            select(ExerciseProgress).where(
+                ExerciseProgress.user_id == enrolment.user_id,
+                ExerciseProgress.exercise_id == exercise_id,
+                ExerciseProgress.deleted_at.is_(None),
+            )
+        )
+        progress = progress_result.scalar_one_or_none()
+
+    # Fallback: enrolment-keyed record (pre-pivot data)
+    if progress is None:
+        progress_result = await db.execute(
+            select(ExerciseProgress).where(
+                ExerciseProgress.enrolment_id == enrolment_id,
+                ExerciseProgress.exercise_id == exercise_id,
+                ExerciseProgress.deleted_at.is_(None),
+            )
+        )
+        progress = progress_result.scalar_one_or_none()
+
     if progress is None:
         return
 

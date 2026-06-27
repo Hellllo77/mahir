@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     s3_secret_access_key: str = ""
     s3_region: str = "ap-southeast-1"
 
+    # Individual-first: auto-assign users to this curriculum on first login.
+    # If empty, the first published curriculum in the DB is used.
+    default_curriculum_id: str = ""
+
     # App
     app_env: str = "development"
     log_level: str = "INFO"

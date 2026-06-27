@@ -5,6 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import settings
 from src.db.models.auth import Enrolment, User, UserAuthProvider, UserStatus
+from src.db.models.curriculum import Curriculum, CurriculumStatus, UserCurriculum
+from src.db.uuidv7 import uuid7_str
 from src.lib.exceptions import unauthorized
 from src.lib.jwt import create_access_token, verify_password
 
@@ -23,6 +25,7 @@ async def authenticate_local(db: AsyncSession, email: str, password: str) -> tup
         raise unauthorized("Invalid email or password.")
     if user.status != UserStatus.active:
         raise unauthorized("Account is not active.")
+    await _ensure_curriculum_assigned(db, user)
     return create_access_token(user.id, user.organization_id, user.global_role.value)
 
 
@@ -65,7 +68,46 @@ async def exchange_oidc_code(db: AsyncSession, code: str, state: str) -> tuple[s
 
     user.display_name = display_name
     await db.flush()
+    await _ensure_curriculum_assigned(db, user)
     return create_access_token(user.id, user.organization_id, user.global_role.value)
+
+
+async def _ensure_curriculum_assigned(db: AsyncSession, user: User) -> None:
+    """Idempotent: insert a user_curriculum row on first login if none exists."""
+    existing = await db.execute(
+        select(UserCurriculum).where(
+            UserCurriculum.user_id == user.id,
+            UserCurriculum.deleted_at.is_(None),
+        )
+    )
+    if existing.scalar_one_or_none() is not None:
+        return
+
+    curriculum_id = settings.default_curriculum_id or None
+    if not curriculum_id:
+        # Fall back to first published curriculum in the org's curricula
+        result = await db.execute(
+            select(Curriculum)
+            .where(
+                Curriculum.status == CurriculumStatus.published,
+                Curriculum.deleted_at.is_(None),
+            )
+            .order_by(Curriculum.created_at)
+            .limit(1)
+        )
+        curriculum = result.scalar_one_or_none()
+        if curriculum is None:
+            return  # No published curriculum yet — skip silently
+        curriculum_id = curriculum.id
+
+    uc = UserCurriculum(
+        id=uuid7_str(),
+        user_id=user.id,
+        curriculum_id=curriculum_id,
+        created_by=user.id,
+    )
+    db.add(uc)
+    await db.flush()
 
 
 async def _fetch_oidc_userinfo(access_token: str) -> dict:

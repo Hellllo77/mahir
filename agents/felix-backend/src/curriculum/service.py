@@ -6,12 +6,81 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.db.models.auth import Cohort, Enrolment, User, UserGlobalRole
-from src.db.models.curriculum import ConsolidationContent, Exercise, Module
+from src.db.models.curriculum import ConsolidationContent, Curriculum, Exercise, Module, UserCurriculum
 from src.db.models.progress import ExercisePhase, ExerciseProgress
 from src.lib.exceptions import forbidden, not_found, phase_locked
 from src.lib.tenant import assert_cohort_access
 
 _ADMIN_ROLES = {UserGlobalRole.super_admin, UserGlobalRole.org_admin, UserGlobalRole.facilitator}
+
+
+async def get_my_curriculum(db: AsyncSession, user: User) -> dict:
+    """Return the user's assigned curriculum with ordered modules, exercises, and per-exercise progress."""
+    uc_result = await db.execute(
+        select(UserCurriculum).where(
+            UserCurriculum.user_id == user.id,
+            UserCurriculum.deleted_at.is_(None),
+        ).order_by(UserCurriculum.created_at).limit(1)
+    )
+    uc = uc_result.scalar_one_or_none()
+    if uc is None:
+        raise not_found("No curriculum assigned.")
+
+    curriculum_result = await db.execute(
+        select(Curriculum).where(Curriculum.id == uc.curriculum_id, Curriculum.deleted_at.is_(None))
+    )
+    curriculum = curriculum_result.scalar_one_or_none()
+    if curriculum is None:
+        raise not_found("Curriculum")
+
+    modules_result = await db.execute(
+        select(Module)
+        .where(Module.curriculum_id == curriculum.id, Module.deleted_at.is_(None))
+        .options(selectinload(Module.exercises))
+        .order_by(Module.sequence_index)
+    )
+    modules = modules_result.scalars().all()
+
+    # Build progress map keyed by exercise_id using user_id directly
+    progress_result = await db.execute(
+        select(ExerciseProgress).where(
+            ExerciseProgress.user_id == user.id,
+            ExerciseProgress.deleted_at.is_(None),
+        )
+    )
+    progress_map = {p.exercise_id: p.phase.value for p in progress_result.scalars().all()}
+
+    assigned_at = uc.assigned_at.isoformat() if uc.assigned_at else uc.created_at.isoformat()
+
+    return {
+        "curriculum": {
+            "id": curriculum.id,
+            "title": curriculum.title,
+            "edition": curriculum.edition.value,
+            "version": curriculum.version,
+            "status": curriculum.status.value,
+        },
+        "modules": [
+            {
+                "id": m.id,
+                "title": m.title,
+                "sequence_index": m.sequence_index,
+                "summary_markdown": m.summary_markdown,
+                "exercises": [
+                    {
+                        "id": ex.id,
+                        "title": ex.title,
+                        "sequence_index": ex.sequence_index,
+                        "phase": progress_map.get(ex.id, ExercisePhase.not_started.value),
+                    }
+                    for ex in sorted(m.exercises, key=lambda e: e.sequence_index)
+                    if ex.deleted_at is None
+                ],
+            }
+            for m in modules
+        ],
+        "assigned_at": assigned_at,
+    }
 
 
 async def list_modules(db: AsyncSession, cohort_id: str, user: User) -> list[dict]:

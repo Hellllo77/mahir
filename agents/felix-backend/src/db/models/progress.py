@@ -1,7 +1,7 @@
 """Progress store — server-authoritative PF phase state (ADR-004, data-model §3)."""
 import enum
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from src.db.base import AuditMixin, Base
@@ -19,6 +19,7 @@ class ExerciseProgress(AuditMixin, Base):
 
     __tablename__ = "exercise_progress"
 
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
     enrolment_id = Column(String(36), ForeignKey("enrolments.id"), nullable=False)
     exercise_id = Column(String(36), ForeignKey("exercises.id"), nullable=False)
     phase = Column(Enum(ExercisePhase, native_enum=False), nullable=False, default=ExercisePhase.not_started)
@@ -34,6 +35,7 @@ class ExerciseProgress(AuditMixin, Base):
 
     __table_args__ = (
         UniqueConstraint("enrolment_id", "exercise_id", name="uq_progress_enrolment_exercise"),
+        Index("ix_exercise_progress_user_id", "user_id"),
     )
 
     enrolment = relationship("Enrolment", back_populates="progress_records")
