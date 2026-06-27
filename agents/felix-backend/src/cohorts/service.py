@@ -24,9 +24,9 @@ _ALLOWED = {UserGlobalRole.org_admin, UserGlobalRole.super_admin, UserGlobalRole
 
 # Statuses a facilitator can set via PATCH /cohorts/:id
 _ALLOWED_STATUS_TRANSITIONS: dict[str, set[str]] = {
-    CohortStatus.draft.value:    {CohortStatus.active.value},
-    CohortStatus.active.value:   {CohortStatus.draft.value, CohortStatus.completed.value},
-    CohortStatus.running.value:  {CohortStatus.active.value, CohortStatus.completed.value},
+    CohortStatus.draft.value:    {CohortStatus.active.value, CohortStatus.archived.value},
+    CohortStatus.active.value:   {CohortStatus.draft.value, CohortStatus.completed.value, CohortStatus.archived.value},
+    CohortStatus.running.value:  {CohortStatus.active.value, CohortStatus.completed.value, CohortStatus.archived.value},
     CohortStatus.completed.value: {CohortStatus.archived.value},
     CohortStatus.archived.value:  set(),
 }
