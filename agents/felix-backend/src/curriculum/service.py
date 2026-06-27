@@ -91,6 +91,7 @@ async def list_module_exercises(db: AsyncSession, cohort_id: str, module_id: str
     )
     exercises = result.scalars().all()
 
+    is_admin = user.global_role in _ADMIN_ROLES
     return [
         {
             "id": ex.id,
@@ -98,6 +99,7 @@ async def list_module_exercises(db: AsyncSession, cohort_id: str, module_id: str
             "title": ex.title,
             "sequence_index": ex.sequence_index,
             "prompt_markdown": ex.prompt_markdown,
+            "facilitator_notes_markdown": ex.facilitator_notes_markdown if is_admin else None,
             "build_spec": json.loads(ex.build_spec) if ex.build_spec else {},
             "prerequisite_exercise_ids": json.loads(ex.prerequisite_exercise_ids or "[]"),
             "gate": {
@@ -129,6 +131,7 @@ async def get_exercise(db: AsyncSession, exercise_id: str, user: User) -> dict:
         "title": exercise.title,
         "sequence_index": exercise.sequence_index,
         "prompt_markdown": exercise.prompt_markdown,
+        "facilitator_notes_markdown": exercise.facilitator_notes_markdown if user.global_role in _ADMIN_ROLES else None,
         "build_spec": json.loads(exercise.build_spec) if exercise.build_spec else {},
         "prerequisite_exercise_ids": json.loads(exercise.prerequisite_exercise_ids or "[]"),
         "gate": {

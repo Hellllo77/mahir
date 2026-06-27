@@ -83,6 +83,7 @@ def parse_week_file(path: Path) -> dict:
 
     # Extract Section 3 student task content (first beat's prompt)
     section3_content = _extract_section(text_content, 3)
+    student_content, facilitator_notes = _split_facilitator_notes(section3_content)
 
     # summary_markdown is student-facing — only the clean module title, no scaffolding notes
     summary_markdown = None
@@ -90,9 +91,11 @@ def parse_week_file(path: Path) -> dict:
     # Set exercise prompts
     for i, beat in enumerate(beats):
         if i == 0 and section3_content:
-            beat["prompt_markdown"] = section3_content
+            beat["prompt_markdown"] = student_content
+            beat["facilitator_notes_markdown"] = facilitator_notes
         else:
             beat["prompt_markdown"] = f"**{beat['title']}**\n\n{beat.get('description', '')}"
+            beat["facilitator_notes_markdown"] = None
 
     return {
         "week_num": week_num,
@@ -136,6 +139,26 @@ def _parse_beats(beat_structure_raw: str, week_num: int) -> list[dict]:
             })
 
     return beats if beats else [{"title": "Session", "description": "", "sequence_index": 1}]
+
+
+_FACILITATOR_DELIMITER = re.compile(
+    r"\n\*\*(?:Facilitator notes?|Teacher notes?|For the facilitator)[^*]*\*\*",
+    re.IGNORECASE,
+)
+
+
+def _split_facilitator_notes(section_content: str) -> "tuple[str, object]":
+    """Split section content into (student_content, facilitator_notes_markdown).
+
+    Splits at the first bold heading matching a facilitator/teacher notes pattern.
+    Returns (full_content, None) if no delimiter is found.
+    """
+    m = _FACILITATOR_DELIMITER.search(section_content)
+    if not m:
+        return section_content.strip(), None
+    student_part = section_content[: m.start()].strip()
+    facilitator_part = section_content[m.start():].strip()
+    return student_part, facilitator_part
 
 
 def _extract_section(text_content: str, section_num: int) -> str:
@@ -241,12 +264,14 @@ def seed(session: Session, dry_run: bool = False) -> None:
             session.execute(
                 text("""
                     INSERT INTO exercises (
-                        id, module_id, title, sequence_index, prompt_markdown, build_spec,
+                        id, module_id, title, sequence_index, prompt_markdown,
+                        facilitator_notes_markdown, build_spec,
                         min_attempts, min_distinct_approaches, min_exploration_seconds,
                         allow_fast_unlock, created_at, updated_at
                     )
                     VALUES (
-                        :id, :mid, :title, :seq, :prompt, :build_spec,
+                        :id, :mid, :title, :seq, :prompt,
+                        :facilitator_notes, :build_spec,
                         2, 1, 180, true, NOW(), NOW()
                     )
                 """),
@@ -256,6 +281,7 @@ def seed(session: Session, dry_run: bool = False) -> None:
                     "title": f"{week['title']} — {beat['title']}",
                     "seq": beat["sequence_index"],
                     "prompt": beat["prompt_markdown"],
+                    "facilitator_notes": beat.get("facilitator_notes_markdown"),
                     "build_spec": build_spec,
                 },
             )

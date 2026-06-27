@@ -32,6 +32,7 @@ class ExerciseOut(BaseModel):
     title: str
     sequence_index: int
     prompt_markdown: str
+    facilitator_notes_markdown: Optional[str] = None
     build_spec: Any
     prerequisite_exercise_ids: List[str] = []
     gate: PfGateConfig

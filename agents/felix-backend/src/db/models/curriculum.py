@@ -50,6 +50,7 @@ class Exercise(AuditMixin, Base):
     title = Column(Text, nullable=False)
     sequence_index = Column(Integer, nullable=False)
     prompt_markdown = Column(Text, nullable=False)
+    facilitator_notes_markdown = Column(Text, nullable=True)
     build_spec = Column(Text, nullable=False)  # JSONB; schema_version required
     prerequisite_exercise_ids = Column(Text, nullable=True)  # JSONB array of UUIDs
     # PF gate hyperparameters (ADR-004)
