@@ -233,6 +233,8 @@ export interface ApiError {
 
 export interface AdminSettings {
   resend_api_key: string | null;
+  openrouter_api_key: string | null;
+  preferred_model: string | null;
 }
 
 export interface CurriculumInfo {
