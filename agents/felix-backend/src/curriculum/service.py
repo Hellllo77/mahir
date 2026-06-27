@@ -120,7 +120,8 @@ async def get_exercise(db: AsyncSession, exercise_id: str, user: User) -> dict:
     if exercise is None:
         raise not_found("Exercise")
 
-    await _assert_exercise_access(db, exercise, user)
+    if user.global_role not in _ADMIN_ROLES:
+        await _assert_exercise_access(db, exercise, user)
 
     return {
         "id": exercise.id,

@@ -27,14 +27,34 @@ async def get_my_progress(db: AsyncSession, enrolment_id: str, user: User) -> li
     return [_progress_to_dict(p, db) for p in records]
 
 
+_ADMIN_ROLES = {UserGlobalRole.super_admin, UserGlobalRole.org_admin, UserGlobalRole.facilitator}
+
+_NOT_STARTED_PROGRESS = {
+    "id": None,
+    "exercise_id": None,
+    "phase": ExercisePhase.not_started.value,
+    "attempts_total": 0,
+    "attempts_genuine": 0,
+    "distinct_approaches": 0,
+    "exploration_seconds": 0,
+    "explored": False,
+    "unlocked_at": None,
+    "completed_at": None,
+    "mastery_score": None,
+}
+
+
 async def get_exercise_progress(db: AsyncSession, exercise_id: str, user: User) -> dict:
-    """PF phase state for a single (caller, exercise)."""
+    """PF phase state for a single (caller, exercise). Returns not_started if no record yet."""
     exercise_result = await db.execute(
         select(Exercise).where(Exercise.id == exercise_id, Exercise.deleted_at.is_(None))
     )
     exercise = exercise_result.scalar_one_or_none()
     if exercise is None:
         raise not_found("Exercise")
+
+    if user.global_role in _ADMIN_ROLES:
+        return {**_NOT_STARTED_PROGRESS, "exercise_id": exercise_id}
 
     enrolment = await _find_enrolment_for_exercise(db, exercise, user)
 
@@ -47,7 +67,7 @@ async def get_exercise_progress(db: AsyncSession, exercise_id: str, user: User) 
     )
     progress = progress_result.scalar_one_or_none()
     if progress is None:
-        raise not_found("ExerciseProgress")
+        return {**_NOT_STARTED_PROGRESS, "exercise_id": exercise_id}
     return _progress_to_dict(progress, exercise)
 
 

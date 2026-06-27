@@ -11,8 +11,8 @@ class PfGateConfig(BaseModel):
 
 
 class ExerciseProgressOut(BaseModel):
-    id: str
-    exercise_id: str
+    id: Optional[str] = None
+    exercise_id: Optional[str] = None
     phase: str
     attempts_total: int = 0
     attempts_genuine: int = 0
