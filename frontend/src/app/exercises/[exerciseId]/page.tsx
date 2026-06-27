@@ -187,7 +187,14 @@ export default function ExercisePage() {
         </div>
       )}
 
-      {error && <div className="alert alert-error">{error}</div>}
+      {error && (
+        <div className="stack" style={{ maxWidth: "36rem" }}>
+          <div className="alert alert-error">{error}</div>
+          <a href="/dashboard" className="text-sm text-muted" style={{ textDecoration: "none" }}>
+            ← Back to your learning path
+          </a>
+        </div>
+      )}
 
       {!loading && exercise && (
         <div style={{ maxWidth: "var(--content-max-width)" }}>
@@ -288,6 +295,26 @@ export default function ExercisePage() {
               {/* Latest evaluation result */}
               {latestSubDetail?.status === "evaluated" && latestSubDetail.result && (
                 <EvaluatorResult result={latestSubDetail.result} />
+              )}
+
+              {/* Co-Worker Notes — Option B: facilitator-only panel */}
+              {isFacilitator && exercise.facilitator_notes_markdown && (
+                <div
+                  style={{
+                    background: "#fefce8",
+                    border: "1px solid #fef08a",
+                    borderTop: "3px solid #eab308",
+                    borderRadius: "var(--radius-md)",
+                    padding: "var(--space-4)",
+                  }}
+                >
+                  <p style={{ fontSize: "var(--font-size-xs)", fontWeight: "var(--font-weight-semibold)", color: "#854d0e", marginBottom: "var(--space-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Co-Worker Notes
+                  </p>
+                  <div className="prose" style={{ fontSize: "var(--font-size-sm)", color: "#713f12" }}>
+                    <ReactMarkdown>{exercise.facilitator_notes_markdown}</ReactMarkdown>
+                  </div>
+                </div>
               )}
 
               {/* Agent builder */}

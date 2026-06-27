@@ -40,7 +40,7 @@ export function ModuleNav({ cohortId, modules }: Props) {
                 letterSpacing: "0.05em",
               }}
             >
-              {mod.sequence_index + 1}. {mod.title}
+              {mod.sequence_index}. {mod.title}
             </div>
 
             {mod.exercises && (
@@ -68,8 +68,11 @@ export function ModuleNav({ cohortId, modules }: Props) {
                             transition: "background var(--transition-fast)",
                           }}
                           aria-current={active ? "page" : undefined}
+                          title={ex.title}
                         >
-                          <span>{ex.title}</span>
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            Beat {ex.sequence_index}
+                          </span>
                           {ex.phase && (
                             <PhaseTag phase={ex.phase} />
                           )}

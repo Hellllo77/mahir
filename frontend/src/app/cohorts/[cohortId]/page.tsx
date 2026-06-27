@@ -45,13 +45,18 @@ export default function CohortPage() {
   const progressById = Object.fromEntries(progress.map((p) => [p.exercise_id, p]));
   const isFacilitator = me?.global_role === "facilitator" || me?.global_role === "org_admin" || me?.global_role === "super_admin";
 
-  const allExercises = modules.flatMap((m) => m.exercises ?? []);
+  const sortedModules = modules.slice().sort((a, b) => a.sequence_index - b.sequence_index);
+  const allExercises = sortedModules.flatMap((m) =>
+    (m.exercises ?? []).slice().sort((a, b) => a.sequence_index - b.sequence_index)
+  );
   const completed = allExercises.filter((e) => progressById[e.id]?.phase === "completed").length;
+
+  const firstIncomplete = allExercises.find((ex) => progressById[ex.id]?.phase !== "completed");
 
   const sidebar = modules.length > 0 ? (
     <ModuleNav
       cohortId={cohortId}
-      modules={modules.map((m) => ({
+      modules={sortedModules.map((m) => ({
         ...m,
         exercises: m.exercises?.map((e) => ({
           ...e,
@@ -75,7 +80,14 @@ export default function CohortPage() {
         </div>
       )}
 
-      {error && <div className="alert alert-error">{error}</div>}
+      {error && (
+        <div className="stack" style={{ maxWidth: "36rem" }}>
+          <div className="alert alert-error">{error}</div>
+          <Link href="/dashboard" className="text-sm text-muted" style={{ textDecoration: "none" }}>
+            ← Back to your learning path
+          </Link>
+        </div>
+      )}
 
       {!loading && !error && (
         <div className="stack" style={{ maxWidth: "var(--content-max-width)" }}>
@@ -86,35 +98,54 @@ export default function CohortPage() {
             </p>
           </div>
 
+          {/* S4 CTA + S5 progress bar — above fold */}
           {allExercises.length > 0 && (
-            <div className="card" style={{ display: "flex", gap: "var(--space-4)", alignItems: "center" }}>
-              <div style={{ flex: 1 }}>
+            <div className="card" style={{ display: "flex", gap: "var(--space-6)", alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: "12rem" }}>
                 <ProgressBar value={completed} max={allExercises.length} showFraction label="Overall progress" />
               </div>
+              {firstIncomplete && (
+                <Link
+                  href={`/exercises/${firstIncomplete.id}`}
+                  className="btn btn-primary"
+                  style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+                >
+                  Continue →
+                </Link>
+              )}
             </div>
           )}
 
+          {/* S4: modules as accordions — current/next open by default */}
           <div className="stack">
-            {modules
-              .slice()
-              .sort((a, b) => a.sequence_index - b.sequence_index)
-              .map((mod) => (
-                <div key={mod.id} className="card">
-                  <h2 style={{ marginBottom: "var(--space-2)" }}>
-                    {mod.sequence_index + 1}. {mod.title}
-                  </h2>
-                  {mod.summary_markdown && (
-                    <p className="text-sm text-muted" style={{ marginBottom: "var(--space-4)" }}>
-                      {mod.summary_markdown}
-                    </p>
-                  )}
+            {sortedModules.map((mod, modIdx) => {
+              const modExercises = (mod.exercises ?? []).slice().sort((a, b) => a.sequence_index - b.sequence_index);
+              const hasActive = modExercises.some((ex) => {
+                const phase = progressById[ex.id]?.phase ?? "not_started";
+                return phase === "exploring" || phase === "not_started";
+              });
+              const isFirst = modIdx === 0;
+              return (
+                <details key={mod.id} className="card" open={isFirst || hasActive}>
+                  <summary style={{ cursor: "pointer", listStyle: "none", display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+                    <h2 style={{ margin: 0, flex: 1 }}>
+                      {mod.sequence_index}. {mod.title}
+                    </h2>
+                    <span className="text-xs text-muted">
+                      {modExercises.filter((ex) => progressById[ex.id]?.phase === "completed").length} / {modExercises.length} done
+                    </span>
+                  </summary>
 
-                  {mod.exercises && mod.exercises.length > 0 ? (
-                    <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-                      {mod.exercises
-                        .slice()
-                        .sort((a, b) => a.sequence_index - b.sequence_index)
-                        .map((ex) => {
+                  <div style={{ marginTop: "var(--space-4)" }}>
+                    {mod.summary_markdown && (
+                      <p className="text-sm text-muted" style={{ marginBottom: "var(--space-4)" }}>
+                        {mod.summary_markdown}
+                      </p>
+                    )}
+
+                    {modExercises.length > 0 ? (
+                      <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+                        {modExercises.map((ex) => {
                           const phase = progressById[ex.id]?.phase ?? "not_started";
                           return (
                             <li key={ex.id}>
@@ -139,12 +170,14 @@ export default function CohortPage() {
                             </li>
                           );
                         })}
-                    </ul>
-                  ) : (
-                    <p className="text-sm text-muted">No exercises in this module yet.</p>
-                  )}
-                </div>
-              ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-muted">No exercises in this module yet.</p>
+                    )}
+                  </div>
+                </details>
+              );
+            })}
           </div>
         </div>
       )}

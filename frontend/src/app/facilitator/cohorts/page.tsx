@@ -17,10 +17,11 @@ import { AppShell } from "@/components/layout/AppShell";
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, { bg: string; color: string }> = {
     active:   { bg: "var(--color-success-bg, #d1fae5)", color: "var(--color-success, #065f46)" },
-    archived: { bg: "var(--color-bg-muted, #f3f4f6)", color: "var(--color-text-muted, #6b7280)" },
-    draft:    { bg: "var(--color-warning-bg, #fef3c7)", color: "var(--color-warning, #92400e)" },
+    archived: { bg: "#f3f4f6", color: "#6b7280" },
+    draft:    { bg: "#f3f4f6", color: "#6b7280" },
+    running:  { bg: "var(--color-warning-bg, #fef3c7)", color: "var(--color-warning, #92400e)" },
   };
-  const s = styles[status] ?? styles.draft;
+  const s = styles[status] ?? { bg: "#f3f4f6", color: "#6b7280" };
   return (
     <span className="badge" style={{ background: s.bg, color: s.color, textTransform: "capitalize" }}>
       {status}
@@ -332,7 +333,7 @@ export default function FacilitatorCohortsPage() {
       {error && <div className="alert alert-error">{error}</div>}
 
       {!loading && !error && (
-        <div className="stack" style={{ maxWidth: "48rem" }}>
+        <div className="stack" style={{ maxWidth: "var(--content-max-width)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "var(--space-4)", flexWrap: "wrap" }}>
             <div>
               <h1>Groups</h1>

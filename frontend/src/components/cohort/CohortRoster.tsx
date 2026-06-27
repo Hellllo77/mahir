@@ -23,6 +23,12 @@ const OVERRIDE_LABELS: Record<string, string> = {
   reset_exploring: "Reset",
 };
 
+const OVERRIDE_TOOLTIPS: Record<string, string> = {
+  unlock_consolidation: "Gate override: manually allow the student to see the canonical solution without meeting the exploration gate",
+  mark_completed: "Gate override: mark this exercise as fully completed for the student",
+  reset_exploring: "Gate override: reset the student back to the exploring phase",
+};
+
 export function CohortRoster({ cohortId, learners, exerciseTitles = {} }: Props) {
   const [filter, setFilter] = useState<Phase | "all">("all");
 
@@ -93,7 +99,7 @@ export function CohortRoster({ cohortId, learners, exerciseTitles = {} }: Props)
 
       <p className="text-xs text-muted">
         {filtered.length} of {learners.length} student{learners.length !== 1 ? "s" : ""} shown.
-        Teacher overrides can be applied on the individual exercise view.
+        Facilitator overrides can be applied on the individual exercise view.
       </p>
     </div>
   );
@@ -174,7 +180,11 @@ function LearnerRow({
                   <PFSignalBadge signal={ex.latest_signal as PFSignal} />
                 )}
                 {!ex.explored && ex.phase !== "not_started" && ex.phase !== "exploring" && (
-                  <span className="badge" style={{ background: "var(--color-warning-bg)", color: "var(--color-warning)", fontSize: "var(--font-size-xs)" }}>
+                  <span
+                    className="badge"
+                    style={{ background: "var(--color-warning-bg)", color: "var(--color-warning)", fontSize: "var(--font-size-xs)" }}
+                    title="PF bypassed — student passed on first attempt without sufficient exploration"
+                  >
                     Fast-unlocked
                   </span>
                 )}
@@ -319,7 +329,7 @@ function ExerciseOverrideRow({
             className="btn btn-sm btn-secondary"
             disabled={disabled || pending === action}
             onClick={() => { setPending(action); setReason(""); setSuccessMsg(null); setOverrideError(null); }}
-            title={!progressId ? "No progress record yet" : undefined}
+            title={!progressId ? "No progress record yet" : OVERRIDE_TOOLTIPS[action]}
           >
             {OVERRIDE_LABELS[action]}
           </button>

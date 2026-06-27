@@ -58,6 +58,7 @@ export interface Exercise {
   title: string;
   sequence_index: number;
   prompt_markdown: string;
+  facilitator_notes_markdown?: string | null;
   build_spec: Record<string, unknown>;
   prerequisite_exercise_ids?: string[];
   gate?: PfGateConfig;

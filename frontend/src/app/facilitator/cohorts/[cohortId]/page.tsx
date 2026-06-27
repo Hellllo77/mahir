@@ -19,10 +19,11 @@ import { CohortRoster } from "@/components/cohort/CohortRoster";
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, { bg: string; color: string }> = {
     active:   { bg: "var(--color-success-bg, #d1fae5)", color: "var(--color-success, #065f46)" },
-    archived: { bg: "var(--color-bg-muted, #f3f4f6)", color: "var(--color-text-muted, #6b7280)" },
-    draft:    { bg: "var(--color-warning-bg, #fef3c7)", color: "var(--color-warning, #92400e)" },
+    archived: { bg: "#f3f4f6", color: "#6b7280" },
+    draft:    { bg: "#f3f4f6", color: "#6b7280" },
+    running:  { bg: "var(--color-warning-bg, #fef3c7)", color: "var(--color-warning, #92400e)" },
   };
-  const s = styles[status] ?? styles.draft;
+  const s = styles[status] ?? { bg: "#f3f4f6", color: "#6b7280" };
   return (
     <span className="badge" style={{ background: s.bg, color: s.color, textTransform: "capitalize" }}>
       {status}
@@ -246,7 +247,7 @@ export default function FacilitatorCohortPage() {
                 </button>
               )}
               <Link href={`/cohorts/${cohortId}`} className="btn btn-secondary">
-                ← Student view
+                Student view →
               </Link>
             </div>
           </div>
@@ -260,39 +261,46 @@ export default function FacilitatorCohortPage() {
             />
           )}
 
-          {/* Summary stats */}
+          {/* Summary stats — A7: color only when value > 0 */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(10rem, 1fr))", gap: "var(--space-4)" }}>
-            <div className="card" style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "var(--font-size-3xl)", fontWeight: "var(--font-weight-bold)", color: "var(--color-brand-primary)" }}>
-                {roster.length}
-              </div>
-              <div className="text-sm text-muted">Enrolled</div>
-            </div>
-            <div className="card" style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "var(--font-size-3xl)", fontWeight: "var(--font-weight-bold)", color: "var(--color-phase-exploring-text)" }}>
-                {roster.filter((l) => l.exercises.some((e) => e.phase === "exploring")).length}
-              </div>
-              <div className="text-sm text-muted">Exploring</div>
-            </div>
-            <div className="card" style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "var(--font-size-3xl)", fontWeight: "var(--font-weight-bold)", color: "var(--color-success)" }}>
-                {completedLearners}
-              </div>
-              <div className="text-sm text-muted">All exercises done</div>
-            </div>
-            <div className="card" style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "var(--font-size-3xl)", fontWeight: "var(--font-weight-bold)", color: "var(--color-warning)" }}>
-                {roster.filter((l) => l.exercises.some((e) => e.latest_signal === "low_effort" || e.latest_signal === "off_task")).length}
-              </div>
-              <div className="text-sm text-muted">Needs attention</div>
-            </div>
+            {(() => {
+              const exploring = roster.filter((l) => l.exercises.some((e) => e.phase === "exploring")).length;
+              const needsAttention = roster.filter((l) => l.exercises.some((e) => e.latest_signal === "low_effort" || e.latest_signal === "off_task")).length;
+              return (
+                <>
+                  <div className="card" style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: "var(--font-size-3xl)", fontWeight: "var(--font-weight-bold)", color: roster.length > 0 ? "var(--color-brand-primary)" : "var(--color-text-muted)" }}>
+                      {roster.length}
+                    </div>
+                    <div className="text-sm text-muted">Enrolled</div>
+                  </div>
+                  <div className="card" style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: "var(--font-size-3xl)", fontWeight: "var(--font-weight-bold)", color: exploring > 0 ? "var(--color-phase-exploring-text)" : "var(--color-text-muted)" }}>
+                      {exploring}
+                    </div>
+                    <div className="text-sm text-muted">Exploring</div>
+                  </div>
+                  <div className="card" style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: "var(--font-size-3xl)", fontWeight: "var(--font-weight-bold)", color: completedLearners > 0 ? "var(--color-success)" : "var(--color-text-muted)" }}>
+                      {completedLearners}
+                    </div>
+                    <div className="text-sm text-muted">All exercises done</div>
+                  </div>
+                  <div className="card" style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: "var(--font-size-3xl)", fontWeight: "var(--font-weight-bold)", color: needsAttention > 0 ? "var(--color-warning)" : "var(--color-text-muted)" }}>
+                      {needsAttention}
+                    </div>
+                    <div className="text-sm text-muted">Needs attention</div>
+                  </div>
+                </>
+              );
+            })()}
           </div>
 
-          {/* Roster table */}
+          {/* Roster table — A6: signal legend moved above roster */}
           <div className="card" style={{ padding: "var(--space-6)", overflow: "hidden" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-6)", gap: "var(--space-4)", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-4)", gap: "var(--space-4)", flexWrap: "wrap" }}>
               <h2 style={{ margin: 0 }}>Student roster</h2>
-              {/* F-M-002: Copy invite link — always visible in roster header */}
               <button
                 className="btn btn-secondary"
                 onClick={handleCopyInviteLink}
@@ -303,6 +311,28 @@ export default function FacilitatorCohortPage() {
                 {copyLabel}
               </button>
             </div>
+
+            {/* Signal legend inline with roster header — A6 */}
+            <div style={{ display: "flex", gap: "var(--space-4)", flexWrap: "wrap", alignItems: "center", marginBottom: "var(--space-6)", padding: "var(--space-3) var(--space-4)", background: "var(--color-bg-surface-raised)", borderRadius: "var(--radius-md)", fontSize: "var(--font-size-xs)", color: "var(--color-text-secondary)" }}>
+              <span style={{ fontWeight: "var(--font-weight-medium)" }}>Signal:</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+                <span className="badge" style={{ background: "var(--color-signal-productive-bg)", color: "var(--color-signal-productive-text)" }}>Productive</span>
+                counts toward gate
+              </span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+                <span className="badge" style={{ background: "var(--color-signal-low-effort-bg)", color: "var(--color-signal-low-effort-text)" }}>Low effort</span>
+                does not count
+              </span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+                <span className="badge" style={{ background: "var(--color-signal-off-task-bg)", color: "var(--color-signal-off-task-text)" }}>Off-task</span>
+                not addressing problem
+              </span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
+                <span className="badge" style={{ background: "var(--color-warning-bg)", color: "var(--color-warning)" }} title="Student passed on first attempt — Productive Failure process was bypassed">Fast-unlocked</span>
+                PF bypassed
+              </span>
+            </div>
+
             {roster.length > 0 ? (
               <CohortRoster cohortId={cohortId} learners={roster} exerciseTitles={exerciseTitles} />
             ) : (
@@ -315,31 +345,8 @@ export default function FacilitatorCohortPage() {
             )}
           </div>
 
-          {/* PF signal legend */}
-          <div className="card">
-            <h4 style={{ marginBottom: "var(--space-4)" }}>Signal legend</h4>
-            <div className="cluster" style={{ gap: "var(--space-6)", flexWrap: "wrap" }}>
-              <div className="cluster">
-                <span className="badge" style={{ background: "var(--color-signal-productive-bg)", color: "var(--color-signal-productive-text)" }}>Productive</span>
-                <span className="text-sm text-muted">Genuine attempt, counts toward gate</span>
-              </div>
-              <div className="cluster">
-                <span className="badge" style={{ background: "var(--color-signal-low-effort-bg)", color: "var(--color-signal-low-effort-text)" }}>Low effort</span>
-                <span className="text-sm text-muted">Submitted but does not count toward gate</span>
-              </div>
-              <div className="cluster">
-                <span className="badge" style={{ background: "var(--color-signal-off-task-bg)", color: "var(--color-signal-off-task-text)" }}>Off-task</span>
-                <span className="text-sm text-muted">Not addressing the problem</span>
-              </div>
-              <div className="cluster">
-                <span className="badge" style={{ background: "var(--color-warning-bg)", color: "var(--color-warning)" }}>Fast-unlocked</span>
-                <span className="text-sm text-muted">Passed on attempt 1 — PF bypassed (audited)</span>
-              </div>
-            </div>
-          </div>
-
           <p className="text-xs text-muted">
-            Teacher gate overrides are available on each student&apos;s individual exercise view.
+            Facilitator gate overrides are available on each student&apos;s individual exercise view.
             All overrides are recorded for grant audit purposes.
           </p>
         </div>
