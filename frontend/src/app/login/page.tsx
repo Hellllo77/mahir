@@ -24,12 +24,7 @@ export default function LoginPage() {
       if (isStaff) {
         router.push("/facilitator/cohorts");
       } else {
-        const activeEnrolment = me.enrolments.find((en) => en.status === "active");
-        if (activeEnrolment) {
-          router.push(`/cohorts/${activeEnrolment.cohort_id}`);
-        } else {
-          router.push("/dashboard");
-        }
+        router.push("/dashboard");
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login failed. Check your credentials.");

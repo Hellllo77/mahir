@@ -234,3 +234,25 @@ export interface ApiError {
 export interface AdminSettings {
   resend_api_key: string | null;
 }
+
+export interface CurriculumInfo {
+  id: string;
+  title: string;
+  edition: string;
+  version: string;
+  status: string;
+}
+
+export interface CurriculumModule {
+  id: string;
+  title: string;
+  sequence_index: number;
+  summary_markdown?: string;
+  exercises: ExerciseSummary[];
+}
+
+export interface CurriculumResponse {
+  curriculum: CurriculumInfo;
+  modules: CurriculumModule[];
+  assigned_at: string;
+}

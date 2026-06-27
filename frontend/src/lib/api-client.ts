@@ -22,6 +22,7 @@ import type {
   EnrolRequest,
   EnrolResponse,
   AdminSettings,
+  CurriculumResponse,
 } from "./api-types";
 
 const API_BASE =
@@ -173,6 +174,10 @@ export async function getExercise(exerciseId: string): Promise<Exercise> {
 
 export async function getConsolidation(exerciseId: string): Promise<ConsolidationContent> {
   return request<ConsolidationContent>(`/exercises/${exerciseId}/consolidation`);
+}
+
+export async function getCurriculum(): Promise<CurriculumResponse> {
+  return request<CurriculumResponse>("/me/curriculum");
 }
 
 // --- Submissions ---

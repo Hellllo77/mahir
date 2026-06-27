@@ -56,9 +56,9 @@ export default function JoinPage() {
         if (err.status === 401) {
           setError("This invite link has expired or is no longer valid. Ask your teacher for a new one.");
         } else if (err.status === 403) {
-          setError("This group isn't open for joining yet. Check with your teacher.");
+          setError("This course isn't open for joining yet. Check with your teacher.");
         } else if (err.status === 409) {
-          setError("You are already enrolled in this group. Sign in to continue.");
+          setError("You're already enrolled. Sign in to continue.");
         } else if (err.status === 400) {
           setError("Please fill in your name and choose a password to create your account.");
         } else {
@@ -107,7 +107,7 @@ export default function JoinPage() {
               marginBottom: "var(--space-2)",
             }}
           >
-            Join your group
+            Get started
           </h1>
           <p className="text-sm text-muted" style={{ marginBottom: "var(--space-6)" }}>
             Enter your details to get started. If you already have an account, just enter your email.
@@ -175,9 +175,9 @@ export default function JoinPage() {
                 style={{ width: "100%" }}
               >
                 {submitting ? (
-                  <><span className="spinner" aria-hidden="true" /> Joining…</>
+                  <><span className="spinner" aria-hidden="true" /> Getting started…</>
                 ) : (
-                  "Join group"
+                  "Get started"
                 )}
               </button>
             </form>

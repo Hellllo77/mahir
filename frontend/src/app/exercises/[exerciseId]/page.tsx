@@ -221,7 +221,6 @@ export default function ExercisePage() {
 
   const sidebar = modules.length > 0 ? (
     <ModuleNav
-      cohortId={activeEnrolment?.cohort_id ?? ""}
       modules={modules.map((m) => ({
         ...m,
         exercises: m.exercises?.map((e) => ({
@@ -366,7 +365,6 @@ export default function ExercisePage() {
                 <SubmissionStatus
                   status={latestSubDetail.status}
                   attemptNumber={latestSubDetail.attempt_number}
-                  cohortId={activeEnrolment?.cohort_id}
                 />
               )}
 
@@ -378,15 +376,13 @@ export default function ExercisePage() {
               {/* Post-eval exit paths */}
               {latestSubDetail?.status === "evaluated" && (
                 <div className="cluster" style={{ gap: "var(--space-3)", flexWrap: "wrap" }}>
-                  {activeEnrolment && (
-                    <a
-                      href={`/cohorts/${activeEnrolment.cohort_id}`}
-                      className="btn btn-secondary"
-                      style={{ textDecoration: "none" }}
-                    >
-                      ← Back to learning path
-                    </a>
-                  )}
+                  <a
+                    href="/dashboard"
+                    className="btn btn-secondary"
+                    style={{ textDecoration: "none" }}
+                  >
+                    ← Back to learning path
+                  </a>
                   {progress?.phase !== "completed" && (
                     <button
                       className="btn btn-secondary"

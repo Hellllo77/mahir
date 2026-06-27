@@ -6,23 +6,22 @@ import type { Module } from "@/lib/api-types";
 import { PhaseTag } from "@/components/ui/PhaseTag";
 
 interface Props {
-  cohortId: string;
   modules: Module[];
   pendingExerciseId?: string;
 }
 
-export function ModuleNav({ cohortId, modules, pendingExerciseId }: Props) {
+export function ModuleNav({ modules, pendingExerciseId }: Props) {
   const pathname = usePathname();
 
   return (
     <nav aria-label="Curriculum modules">
       <div style={{ padding: "0 var(--space-4) var(--space-2)", marginBottom: "var(--space-2)" }}>
         <Link
-          href={`/cohorts/${cohortId}`}
+          href="/dashboard"
           className="text-xs text-muted"
           style={{ textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: "var(--font-weight-semibold)" }}
         >
-          Modules
+          ← Learning path
         </Link>
       </div>
 

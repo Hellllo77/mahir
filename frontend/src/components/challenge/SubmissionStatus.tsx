@@ -7,7 +7,6 @@ import type { SubmissionStatus as TStatus } from "@/lib/api-types";
 interface Props {
   status: TStatus;
   attemptNumber: number;
-  cohortId?: string;
 }
 
 const STATUS_ICON: Record<TStatus, string> = {
@@ -31,7 +30,7 @@ const STATUS_CLASS: Record<TStatus, string> = {
   failed: "alert alert-error",
 };
 
-export function SubmissionStatus({ status, attemptNumber, cohortId }: Props) {
+export function SubmissionStatus({ status, attemptNumber }: Props) {
   const isActive = status === "queued" || status === "running";
   const [elapsed, setElapsed] = useState(0);
 
@@ -59,10 +58,10 @@ export function SubmissionStatus({ status, attemptNumber, cohortId }: Props) {
               : "Still evaluating — this usually takes under a minute. Don't close this tab."}
           </div>
         )}
-        {isActive && elapsed >= 60 && cohortId && (
+        {isActive && elapsed >= 60 && (
           <div style={{ marginTop: "var(--space-2)" }}>
             <Link
-              href={`/cohorts/${cohortId}`}
+              href="/dashboard"
               className="text-xs"
               style={{ color: "inherit", textDecoration: "underline" }}
             >
