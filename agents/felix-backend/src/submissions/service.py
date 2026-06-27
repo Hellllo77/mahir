@@ -147,6 +147,7 @@ async def _get_enrolment_for_exercise(db: AsyncSession, exercise: Exercise, user
             Enrolment.deleted_at.is_(None),
             Cohort.deleted_at.is_(None),
         )
+        .limit(1)
     )
     enrolment = enrolment_result.scalar_one_or_none()
     if enrolment is None:

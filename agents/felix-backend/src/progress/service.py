@@ -394,6 +394,7 @@ async def _find_enrolment_for_exercise(db: AsyncSession, exercise: Exercise, use
             Cohort.curriculum_id == module.curriculum_id,
             Enrolment.deleted_at.is_(None),
         )
+        .limit(1)
     )
     enrolment = enrolment_result.scalar_one_or_none()
     if enrolment is None:

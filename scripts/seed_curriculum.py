@@ -84,14 +84,8 @@ def parse_week_file(path: Path) -> dict:
     # Extract Section 3 student task content (first beat's prompt)
     section3_content = _extract_section(text_content, 3)
 
-    # Build summary markdown from metadata
-    summary_parts = [f"**{act_label} — {week_type}**" if act_label else f"**{week_type}**"]
-    if beat_structure_raw:
-        # Get just the value part after the last |
-        parts = [p.strip() for p in beat_structure_raw.split("|") if p.strip()]
-        if len(parts) >= 2:
-            summary_parts.append(f"Beat structure: {parts[-1]}")
-    summary_markdown = "\n\n".join(summary_parts)
+    # summary_markdown is student-facing — only the clean module title, no scaffolding notes
+    summary_markdown = None
 
     # Set exercise prompts
     for i, beat in enumerate(beats):
