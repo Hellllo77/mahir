@@ -45,6 +45,8 @@ export default function ExercisePage() {
   const [progress, setProgress] = useState<ExerciseProgress | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [submissionDetails, setSubmissionDetails] = useState<Record<string, SubmissionDetail>>({});
+  const [submissionsLoading, setSubmissionsLoading] = useState(true);
+  const [submissionsError, setSubmissionsError] = useState<string | null>(null);
   const [consolidation, setConsolidation] = useState<ConsolidationContent | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,22 +81,12 @@ export default function ExercisePage() {
         const meData = await getMe();
         setMe(meData);
 
-        const [exData, progData, subsData] = await Promise.all([
+        const [exData, progData] = await Promise.all([
           getExercise(exerciseId),
           getExerciseProgress(exerciseId).catch(() => null),
-          listSubmissions(exerciseId).catch(() => []),
         ]);
         setExercise(exData);
         setProgress(progData);
-        setSubmissions(subsData);
-
-        // Fetch full details for each historical submission (gets eval results)
-        if (subsData.length > 0) {
-          const details = await Promise.all(subsData.map((s) => getSubmission(s.id).catch(() => null)));
-          const detailMap: Record<string, SubmissionDetail> = {};
-          details.forEach((d) => { if (d) detailMap[d.id] = d; });
-          setSubmissionDetails(detailMap);
-        }
 
         // Load sidebar modules + sibling beat exercises
         const activeEnrolment = meData.enrolments.find((e) => e.status === "active");
@@ -129,6 +121,33 @@ export default function ExercisePage() {
       }
     }
     load();
+  }, [exerciseId]);
+
+  // Dedicated submissions fetch — runs on every mount so history persists across navigation
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchSubmissions() {
+      setSubmissionsLoading(true);
+      setSubmissionsError(null);
+      try {
+        const subs = await listSubmissions(exerciseId);
+        if (cancelled) return;
+        setSubmissions(subs);
+        if (subs.length > 0) {
+          const details = await Promise.all(subs.map((s) => getSubmission(s.id).catch(() => null)));
+          if (cancelled) return;
+          const detailMap: Record<string, SubmissionDetail> = {};
+          details.forEach((d) => { if (d) detailMap[d.id] = d; });
+          setSubmissionDetails(detailMap);
+        }
+      } catch {
+        if (!cancelled) setSubmissionsError("Couldn't load attempt history — try again");
+      } finally {
+        if (!cancelled) setSubmissionsLoading(false);
+      }
+    }
+    fetchSubmissions();
+    return () => { cancelled = true; };
   }, [exerciseId]);
 
   // After polling completes on an evaluated submission, refresh progress + update history
@@ -352,8 +371,40 @@ export default function ExercisePage() {
                 </div>
               )}
 
-              {/* Attempt history — persists across navigation */}
-              {submissions.length > 0 && (
+              {/* Attempt history — loading / error / empty / data states */}
+              {submissionsLoading ? (
+                <div className="card" style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", padding: "var(--space-4)" }}>
+                  <span className="spinner" aria-hidden="true" />
+                  <span className="text-sm text-muted">Loading attempt history…</span>
+                </div>
+              ) : submissionsError ? (
+                <div className="card" style={{ padding: "var(--space-4)" }}>
+                  <p className="text-sm" style={{ color: "var(--color-error, #dc2626)", marginBottom: "var(--space-3)" }}>
+                    {submissionsError}
+                  </p>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => {
+                      setSubmissionsError(null);
+                      setSubmissionsLoading(true);
+                      listSubmissions(exerciseId)
+                        .then(async (subs) => {
+                          setSubmissions(subs);
+                          if (subs.length > 0) {
+                            const details = await Promise.all(subs.map((s) => getSubmission(s.id).catch(() => null)));
+                            const m: Record<string, SubmissionDetail> = {};
+                            details.forEach((d) => { if (d) m[d.id] = d; });
+                            setSubmissionDetails(m);
+                          }
+                        })
+                        .catch(() => setSubmissionsError("Couldn't load attempt history — try again"))
+                        .finally(() => setSubmissionsLoading(false));
+                    }}
+                  >
+                    Try again
+                  </button>
+                </div>
+              ) : submissions.length > 0 ? (
                 <div>
                   <h3 style={{ marginBottom: "var(--space-3)", fontSize: "var(--font-size-base)" }}>Attempt history</h3>
                   <div className="stack" style={{ gap: "var(--space-3)" }}>
@@ -406,7 +457,7 @@ export default function ExercisePage() {
                     })}
                   </div>
                 </div>
-              )}
+              ) : null}
             </div>
           )}
         </div>
